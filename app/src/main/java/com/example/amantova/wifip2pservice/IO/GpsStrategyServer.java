@@ -1,8 +1,17 @@
-package com.example.amantova.wifip2pservice;
+package com.example.amantova.wifip2pservice.io;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public interface IOStrategy {
-    void run(InputStream in, OutputStream out);
+public class GpsStrategyServer implements IOStrategy {
+    public void run(InputStream in, OutputStream out);
+
+    // recupare valore gps
+    if( PackageManager.hasSystemFeature("FEATURE_LOCATION") == false ){
+      // some problem
+    }else{
+      LocationManager manager = Context.getSystemService("Context.LOCATION_SERVICE");
+    }
+
+    // mandalo nell'outputstream
 }
