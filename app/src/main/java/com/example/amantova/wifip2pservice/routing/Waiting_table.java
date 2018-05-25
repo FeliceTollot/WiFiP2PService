@@ -4,12 +4,12 @@ import java.util.*;
 
 public class Waiting_table{
 
-  private Hashtable<String, Long> table = new Hashtable<String, Long>();
+  private Hashtable<String, Waiting_table_entry> table = new Hashtable<String, Waiting_table_entry>();
 
   public Boolean check_waiting(String eid_arg){
-    Long item = table.get(eid_arg);
+    Waiting_table_entry item = table.get(eid_arg);
     if(item == null) {return false;}
-    if(item > System.currentTimeMillis()/1000){return true;}
+    if(item.extintion > System.currentTimeMillis()/1000){return true;}
     table.remove(eid_arg);
     return false;
   }
@@ -18,12 +18,16 @@ public class Waiting_table{
     Set<String> set_eids = table.keySet();
     Iterator<String> it = set_eids.iterator();
     while(it.hasNext()){
-      String eid = it.next();
-      Long extintion = table.get(eid);
+      Waiting_table_entry entry = table.get( it.next() );
+      Long extintion = entry.extintion;
       if(extintion < System.currentTimeMillis()/1000){
-        remove_eid(eid);
+        remove_eid(entry.eid_dest);
       }
     }
+  }
+
+  public Waiting_table_entry get_eid(String eid){
+    return table.get(eid);
   }
 
   public int size(){
@@ -34,8 +38,18 @@ public class Waiting_table{
     table.remove(eid_arg);
   }
 
-  public void register_eid(String eid_arg, long expiration_time){
-    table.put(eid_arg, expiration_time);
+  public void register_eid(String eid_dest, String service, long expiration_time){
+    table.put(eid_dest, new Waiting_table_entry(eid_dest,service,expiration_time));
+  }
+
+  public Boolean check_service_need(String service_name){
+    Set<String> set_eids = table.keySet();
+    Iterator<String> it = set_eids.iterator();
+    while(it.hasNext()){
+      Waiting_table_entry entry = table.get( it.next() );
+      if( entry.service_name.equals(service_name) ){return true;}
+    }
+    return false;
   }
 
 }
