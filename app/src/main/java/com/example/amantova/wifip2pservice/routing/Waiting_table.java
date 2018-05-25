@@ -47,7 +47,9 @@ public class Waiting_table{
     Iterator<String> it = set_eids.iterator();
     while(it.hasNext()){
       Waiting_table_entry entry = table.get( it.next() );
-      if( entry.service_name.equals(service_name) ){return true;}
+      if( entry.service_name.equals(service_name) && entry.extintion > System.currentTimeMillis()/1000){
+        return true;
+      }
     }
     return false;
   }
