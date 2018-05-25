@@ -11,6 +11,8 @@ public class GpsStrategyServer implements IOStrategy {
       // some problem
     }else{
       LocationManager manager = Context.getSystemService("Context.LOCATION_SERVICE");
+
+      Location value = manager.getLastKnownLocation(String provider)
     }
 
     // mandalo nell'outputstream
