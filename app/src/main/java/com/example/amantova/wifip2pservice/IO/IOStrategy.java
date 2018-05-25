@@ -1,4 +1,4 @@
-package com.example.amantova.wifip2pservice;
+package com.example.amantova.wifip2pservice.io;
 
 import java.io.InputStream;
 import java.io.OutputStream;
