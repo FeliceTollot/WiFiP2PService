@@ -19,6 +19,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.example.amantova.wifip2pservice.IO.GossipStrategyClient;
+import com.example.amantova.wifip2pservice.IO.GossipStrategyServer;
 import com.example.amantova.wifip2pservice.IO.GpsStrategyClient;
 import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
 import com.example.amantova.wifip2pservice.format.Format;
@@ -183,12 +185,13 @@ public class MainActivity extends AppCompatActivity {
         }});
         mServicesClient.put("_gps", new GpsStrategyClient());
 
-        ServiceInfo gossip = new ServiceInfo() {{
+        final GossipStrategyServer gossip = new GossipStrategyServer();
+        providedService.add(new ServiceInfo() {{
             name = "_gossip";
-            type = "_presence._tcp";
-            server = null;
-        }};
-        mServicesClient.put("_gossip", null);
+            type = "_presence._tpc";
+            server = gossip;
+        }});
+        mServicesClient.put("_gossip", new GossipStrategyClient());
 
         HashMap<String, String> record = new HashMap<>();
 
