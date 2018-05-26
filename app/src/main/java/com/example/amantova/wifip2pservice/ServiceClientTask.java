@@ -34,7 +34,7 @@ public class ServiceClientTask extends AsyncTask<Void, Void, Void> {
             socket.connect(mTarget, 500);
             Log.d("Socket Client", "Connected with the server!");
 
-            mStrategy.run(socket, null);
+            mStrategy.run(socket);
             /*
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

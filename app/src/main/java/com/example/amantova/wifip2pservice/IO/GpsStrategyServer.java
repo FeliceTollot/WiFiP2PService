@@ -33,7 +33,7 @@ public class GpsStrategyServer implements IOStrategy {
     }
 
     @Override
-    public void run(final Socket socket, final Object sync){
+    public void run(final Socket socket){
         FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(main_activity);
 
         mFusedLocationClient.getLastLocation()
@@ -49,8 +49,7 @@ public class GpsStrategyServer implements IOStrategy {
                             try {
                                 //OutputStream out = socket.getOutputStream();
 
-                                PrintWriter out =
-                                        new PrintWriter(socket.getOutputStream(), true);
+                                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
                                 out.println(String.valueOf(location.getLongitude()));
                                 out.println(String.valueOf(location.getLatitude()));
@@ -60,8 +59,6 @@ public class GpsStrategyServer implements IOStrategy {
 
                                 out.close();
                                 socket.close();
-
-                                sync.notifyAll();
                             }catch(IOException exc){
                                 Log.d("IOException", String.valueOf(exc.getCause()));
                             }

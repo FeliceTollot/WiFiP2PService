@@ -25,7 +25,7 @@ public class GpsStrategyClient implements IOStrategy {
         return ByteBuffer.wrap(bytes).getDouble();
     }
 
-    public void run(Socket socket, Object sync){
+    public void run(Socket socket){
         //byte[] b1 = convertToByteArray(1);
         //byte[] b2 = convertToByteArray(2);
 
