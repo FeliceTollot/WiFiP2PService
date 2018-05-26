@@ -7,5 +7,5 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public interface IOStrategy {
-    void run(final InputStream in, final OutputStream out, Activity main_act);
+    void run(final InputStream in, final OutputStream out);
 }
