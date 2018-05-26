@@ -21,7 +21,7 @@ public class GpsStrategyClient implements IOStrategy {
         return ByteBuffer.wrap(bytes).getDouble();
     }
 
-    public void run(final InputStream in, final OutputStream out, Activity main_act){
+    public void run(final InputStream in, final OutputStream out){
 
         byte[] b1 = convertToByteArray(1);
         byte[] b2 = convertToByteArray(2);
