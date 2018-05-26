@@ -22,7 +22,7 @@ public class GossipStrategyClient implements IOStrategy {
 
     public void run(Socket socket){
 
-        
+
 
     }
 

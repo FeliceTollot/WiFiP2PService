@@ -26,6 +26,7 @@ import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
 import com.example.amantova.wifip2pservice.format.Format;
 import com.example.amantova.wifip2pservice.IO.IOStrategy;
 import com.example.amantova.wifip2pservice.routing.Packet_table;
+import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
 import java.io.IOException;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
+    private Routing_table   mRoutingTable = new Routing_table();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -185,13 +187,13 @@ public class MainActivity extends AppCompatActivity {
         }});
         mServicesClient.put("_gps", new GpsStrategyClient());
 
-        final GossipStrategyServer gossip = new GossipStrategyServer();
+        final GossipStrategyServer gossip = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable);
         providedService.add(new ServiceInfo() {{
             name = "_gossip";
             type = "_presence._tpc";
             server = gossip;
         }});
-        mServicesClient.put("_gossip", new GossipStrategyClient());
+        mServicesClient.put("_gossip", new GossipStrategyClient(mRoutingTable, mWaitingTable, mPacketTable));
 
         HashMap<String, String> record = new HashMap<>();
 
