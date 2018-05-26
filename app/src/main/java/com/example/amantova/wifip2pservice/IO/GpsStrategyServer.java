@@ -12,6 +12,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 
@@ -46,10 +47,16 @@ public class GpsStrategyServer implements IOStrategy {
                             Log.d("Latitude: ",String.valueOf(location.getLatitude()));
 
                             try {
-                                OutputStream out = socket.getOutputStream();
+                                //OutputStream out = socket.getOutputStream();
+
+                                PrintWriter out =
+                                        new PrintWriter(socket.getOutputStream(), true);
+
+                                out.println(String.valueOf(location.getLongitude()));
+                                out.println(String.valueOf(location.getLatitude()));
 
                                 // out.write(convertToByteArray(location.getLongitude()));
-                                out.write(convertToByteArray(location.getLatitude()));
+                                //out.write(convertToByteArray(location.getLatitude()));
 
                                 out.close();
                                 socket.close();

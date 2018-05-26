@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -24,20 +26,31 @@ public class GpsStrategyClient implements IOStrategy {
     }
 
     public void run(Socket socket, Object sync){
-        byte[] b1 = convertToByteArray(1);
-        byte[] b2 = convertToByteArray(2);
+        //byte[] b1 = convertToByteArray(1);
+        //byte[] b2 = convertToByteArray(2);
 
         try {
-            InputStream in = socket.getInputStream();
 
-            in.read(b1);
-            Log.d("GpsClient", "Received: " + Arrays.toString(b1));
+            //PrintWriter out =
+            //        new PrintWriter(echoSocket.getOutputStream(), true);
+            // out.println(userInput);
+            BufferedReader in =
+                    new BufferedReader(
+                            new InputStreamReader(socket.getInputStream()));
 
-            in.read(b2);
-            Log.d("GpsClient", "Received: " + Arrays.toString(b2));
 
-            Log.d("Longitude",String.valueOf(toDouble(b1)));
-            Log.d("Latitude", String.valueOf(toDouble(b2)));
+            String longitude = in.readLine();
+            String latitude = in.readLine();
+
+            Log.d("Longitude",longitude);
+            Log.d("Latitude", latitude);
+            //Log.d("GpsClient", "Received: " + Arrays.toString(b1));
+
+            //in.read(b2);
+            //Log.d("GpsClient", "Received: " + Arrays.toString(b2));
+
+            //Log.d("Longitude",String.valueOf(toDouble(b1)));
+            //Log.d("Latitude", String.valueOf(toDouble(b2)));
 
             in.close();
             socket.close();
