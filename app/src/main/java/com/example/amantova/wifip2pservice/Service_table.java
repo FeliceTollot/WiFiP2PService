@@ -12,12 +12,4 @@ public class Service_table{
     public List<ServiceInfo> get_all(){
         return table;
     }
-
-    public String serialize(){
-        String result = "";
-        for (ServiceInfo service : table) {
-            result = result + service.name.toString() + "," + service.type.toString() + "," + service.port.toString() + ";";
-        }
-        return result;
-    }
 }

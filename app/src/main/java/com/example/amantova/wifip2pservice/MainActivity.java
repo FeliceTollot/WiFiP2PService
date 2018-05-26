@@ -1,12 +1,11 @@
 package com.example.amantova.wifip2pservice;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -19,21 +18,23 @@ import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
+
+import com.example.amantova.wifip2pservice.IO.GpsStrategyClient;
+import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
+import com.example.amantova.wifip2pservice.format.Format;
+import com.example.amantova.wifip2pservice.IO.IOStrategy;
+import com.example.amantova.wifip2pservice.routing.Packet_table;
+import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
 import java.io.IOException;
-import java.net.InetAddress;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.Socket;
-import java.security.Provider;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private final IntentFilter _IntentFilter = new IntentFilter();
@@ -41,21 +42,24 @@ public class MainActivity extends AppCompatActivity {
     private Channel         mChannel;
     private WifiP2pManager  mManager;
 
-    private Service_table   mServices = new Service_table();
-
     private boolean         mAllowServiceRequest = true;
+    // Will be set when a needed service is discovered (into onDnsSdTxtRecordAvailable callback)
+    private WaitingService  mWaitingService;
 
-    private LinkedList<WaitingService> mWaitingService = new LinkedList<>();
+    private HashMap<String, IOStrategy> mServicesClient = new HashMap<>();
+
+    private Waiting_table   mWaitingTable = new Waiting_table();
+    private Packet_table    mPacketTable = new Packet_table();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
-            if (!mWaitingService.isEmpty()) {
-                Log.d("Connection Information", info.groupOwnerAddress.getHostAddress());
-                WaitingService waitingService = mWaitingService.remove();
+            // This is the client and it's waiting to satisfy its service request
+            if (mWaitingService != null) {
+                Log.d("Connection Information", info.groupOwnerAddress.getHostAddress() + " " + mWaitingService.name + ":" + mWaitingService.port);
+                InetSocketAddress target = new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), mWaitingService.port);
 
-                new ServiceClientTask(new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), waitingService.port))
-                        .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                new ServiceClientTask(target, mServicesClient.get(mWaitingService.name)).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             }
         }
     };
@@ -74,8 +78,11 @@ public class MainActivity extends AppCompatActivity {
                     // m_txtWifiP2PStatus.setText("Off");
                 }
             } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-                // if the device is not connected to an other
-                discoverService();
+                Log.d("Peer Discovery", "New peers was found!");
+                if (mAllowServiceRequest) {
+                    Log.d("Peer Discovery", "Searching new services");
+                    discoverService();
+                }
             } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
                 if (mManager == null) {
                     Log.e("BroadcastReceiver Wifi", "WifiP2pManager is set to null");
@@ -87,11 +94,9 @@ public class MainActivity extends AppCompatActivity {
                 if (networkInfo.isConnected()) {
                     Log.d("Connection", "Success! The device is connected with an other one");
                     mManager.requestConnectionInfo(mChannel, connectionListener);
+                } else { // The devises are disconnected
+                    mAllowServiceRequest = true;
                 }
-
-                // Connection state changed! We should probably do something about
-                // that.
-
             } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
                 /*
                 DeviceListFragment fragment = (DeviceListFragment) activity.getFragmentManager()
@@ -107,13 +112,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-/*
-        final Button btnSearchService = findViewById(R.id.btnSearchServie);
-        btnSearchService.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) { discoverService(); }
-        });
-*/
+
         // Indicates a change in the Wi-Fi P2P status.
         _IntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
 
@@ -171,33 +170,50 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private int initializeServerSocket() throws IOException {
+    private int initializeServerSocketForService(IOStrategy serverStrategy) throws IOException {
         ServerSocket serverSocket = new ServerSocket(0);
 
-        new ServiceServerTask(serverSocket).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        new ServiceServerTask(serverSocket, serverStrategy).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         Log.d("ServiceRegistration", "Listening service request on port " + serverSocket.getLocalPort());
 
         return serverSocket.getLocalPort();
     }
 
     private void registerAvailableServices() {
-        HashMap<String, String> record = new HashMap<>();
+        ArrayList<ServiceInfo> providedService = new ArrayList<>();
 
-        mServices.add(new ServiceInfo("_gps", "_presence._tcp"));
+        final GpsStrategyServer gps = new GpsStrategyServer(this);
+        providedService.add(new ServiceInfo() {{
+            name = "_gps";
+            type = "_presence._tpc";
+            server = gps;
+        }});
+        mServicesClient.put("_gps", new GpsStrategyClient());
+
+        ServiceInfo gossip = new ServiceInfo() {{
+            name = "_gossip";
+            type = "_presence._tcp";
+            server = null;
+        }};
+        mServicesClient.put("_gossip", null);
+
+        HashMap<String, String> record = new HashMap<>();
 
         try {
             // Register custom services
-            for (ServiceInfo service : mServices.get_all()) {
-                record.put("port", String.valueOf(initializeServerSocket()));
-                register(service, record);
+            for (ServiceInfo service : providedService) {
+                record.put("port",  String.valueOf(initializeServerSocketForService(service.server)));
+                registerService(service, record);
 
                 record.clear();
             }
-
-            record.put("port", String.valueOf(initializeServerSocket()));
+            /*
+            // Register Gossip service
+            record.put("port", String.valueOf(initializeServerSocketForService(gossip.server)));
             record.put("identity", Format.gen_eid());
 
-            register(new ServiceInfo("_gossip", "presence._tcp"), record);
+            registerService(gossip, record);
+            */
         } catch (IOException e) {
             Log.e("Service Registration", "Failed to register service");
         } catch (Exception e) {
@@ -208,18 +224,24 @@ public class MainActivity extends AppCompatActivity {
     private void setDiscoveryServiceListener() {
         WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
             @Override
-            public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice provider) {
-                String serviceName = fullDomainName.split(".")[0];
+            public void onDnsSdTxtRecordAvailable(String fullDomainName, final Map<String, String> txtRecordMap, WifiP2pDevice provider) {
+                final String serviceName = fullDomainName.split("\\.")[0];
 
-                if (mAllowServiceRequest && waitingTable.isRequiredService(serviceName)) {
-                    // Deny other attempts to connect with other service discovered previously
+
+                if (mAllowServiceRequest /*&& mWaitingTable.check_service_need(serviceName)*/) {
                     mAllowServiceRequest = false;
+                    // Deny other attempts to connect with other service discovered previously
+                    mWaitingService = new WaitingService() {{
+                       name = serviceName;
+                       port = Integer.parseInt(txtRecordMap.get("port"));
+                    }};
 
                     WifiP2pConfig config = new WifiP2pConfig();
                     config.deviceAddress = provider.deviceAddress;
                     config.wps.setup = WpsInfo.PBC;
 
                     Log.d("Connection","Attempting to connect with: " + provider.deviceName + " (" + provider.deviceAddress + ")");
+
                     mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
                         @Override
                         public void onSuccess() {
@@ -239,14 +261,14 @@ public class MainActivity extends AppCompatActivity {
         WifiP2pManager.DnsSdServiceResponseListener serviceListener = new WifiP2pManager.DnsSdServiceResponseListener() {
             @Override
             public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice provider) {
-                Log.d("ServiceDiscovering", instanceName + " " + registrationType + " " + provider.deviceName);
+                // Log.d("ServiceDiscovering", instanceName + " " + registrationType + " " + provider.deviceName);
             }
         };
 
         mManager.setDnsSdResponseListeners(mChannel, serviceListener, txtListener);
     }
 
-    private void register(ServiceInfo service, HashMap<String, String> record) {
+    private void registerService(ServiceInfo service, HashMap<String, String> record) {
         WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance(service.name, service.type, record);
 
         // Add the local service, sending the service info, network channel,

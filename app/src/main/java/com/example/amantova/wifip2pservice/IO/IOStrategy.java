@@ -1,11 +1,7 @@
 package com.example.amantova.wifip2pservice.IO;
 
-import android.app.Activity;
-import android.content.Context;
-
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.net.Socket;
 
 public interface IOStrategy {
-    void run(final InputStream in, final OutputStream out);
+    void run(Socket socket, Object sync);
 }

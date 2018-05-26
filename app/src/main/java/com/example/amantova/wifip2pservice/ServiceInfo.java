@@ -1,11 +1,9 @@
 package com.example.amantova.wifip2pservice;
 
-public class ServiceInfo {
-    public String                   name;
-    public String                   type;
+import com.example.amantova.wifip2pservice.IO.IOStrategy;
 
-    public ServiceInfo(String name, String type) {
-        this.name = name;
-        this.type = type;
-    }
+public class ServiceInfo {
+    public String       name;
+    public String       type;
+    public IOStrategy   server;
 }

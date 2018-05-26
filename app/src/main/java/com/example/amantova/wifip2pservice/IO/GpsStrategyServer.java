@@ -12,6 +12,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 
 public class GpsStrategyServer implements IOStrategy {
@@ -30,8 +31,8 @@ public class GpsStrategyServer implements IOStrategy {
 
     }
 
-    public void run(final InputStream in, final OutputStream out){
-
+    @Override
+    public void run(final Socket socket, final Object sync){
         FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(main_activity);
 
         mFusedLocationClient.getLastLocation()
@@ -45,8 +46,15 @@ public class GpsStrategyServer implements IOStrategy {
                             Log.d("Latitude: ",String.valueOf(location.getLatitude()));
 
                             try {
-                                out.write(convertToByteArray(location.getLongitude()));
+                                OutputStream out = socket.getOutputStream();
+
+                                // out.write(convertToByteArray(location.getLongitude()));
                                 out.write(convertToByteArray(location.getLatitude()));
+
+                                out.close();
+                                socket.close();
+
+                                sync.notifyAll();
                             }catch(IOException exc){
                                 Log.d("IOException", String.valueOf(exc.getCause()));
                             }

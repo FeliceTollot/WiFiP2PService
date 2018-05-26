@@ -9,7 +9,8 @@
 //  Size payload                32 Bit  (in bytes)
 //  Payload                     variable
 
-import java.io.OutputStream;
+package com.example.amantova.wifip2pservice.format;
+
 import java.util.*;
 import java.nio.ByteBuffer;
 
