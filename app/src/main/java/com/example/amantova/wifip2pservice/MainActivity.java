@@ -41,6 +41,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -166,7 +167,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 TextView txtID = findViewById(R.id.txtID);
-                txtID.setText(mRoutingTable.get_my_eid());
+
+                byte[] id = mRoutingTable.get_my_eid().getBytes(Charset.forName("UTF-8"));
+                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+                buffer.put(id);
+                buffer.flip();//need flip
+                long simpleId = buffer.getLong();
+                txtID.setText(String.valueOf(simpleId));
             }
         });
 
