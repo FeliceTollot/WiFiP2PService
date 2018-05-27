@@ -23,8 +23,15 @@ public class Routing_table {
     table.put(eid_arg, new table_item(System.currentTimeMillis()/1000,1));
   }
 
+  public List<String> get_eids(){
+    Set<String> eids = table.keySet();
+    List<String> list_eids = new LinkedList<>();
+    list_eids.addAll(eids);
+    return list_eids;
+  }
+
   public void add_seen(String eid){
-    table_item item =table.get(eid);
+    table_item item = table.get(eid);
     item.count_times_seen = item.count_times_seen + 1;
   }
 
@@ -41,6 +48,25 @@ public class Routing_table {
     long actual_avg = get_avg_time(eid_arg);
     if(avg_time_arg < actual_avg){return true;}
     else{return false;}
+  }
+
+  public void meet(String eid){
+    List<String> registered_eids = get_eids();
+    boolean registered = false;
+    Iterator<String> it = registered_eids.iterator();
+    while(it.hasNext()){
+      String item = it.next();
+      if(item.equals(eid)){
+        registered = true;
+      }
+    }
+
+    if(registered==false){
+      register_eid(eid);
+    }else{
+      add_seen(eid);
+    }
+
   }
 
 }
