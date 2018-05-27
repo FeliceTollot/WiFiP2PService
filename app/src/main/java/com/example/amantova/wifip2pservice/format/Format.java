@@ -155,12 +155,14 @@ public class Format{
 }
 
   public static String gen_eid(){
-    byte[] r = new byte[3];
+    /*byte[] r = new byte[3];
     Random rnd = new Random();
     rnd.nextBytes(r);
+
     String s = "";
     for(int i=0; i<3; i++){
-      String tmp = Integer.toBinaryString(r[i] & 0xFF);
+      String tmp = String.valueOf(new Integer(r[i]));
+      //String tmp = Integer.toBinaryString(r[i] & 0xFF);
       int times = 8 - tmp.length();
       String prefix = "";
       for(int j=0;j<times;j++){
@@ -169,7 +171,11 @@ public class Format{
       tmp = prefix + tmp;
       s = s + tmp;
     }
-    return s;
+    return s;*/
+
+    String eid = UUID.randomUUID().toString();
+    return eid;
+
   }
 
   //public static void main(String[] args) {
