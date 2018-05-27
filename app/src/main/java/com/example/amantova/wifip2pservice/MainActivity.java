@@ -21,11 +21,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.example.amantova.wifip2pservice.IO.GossipStrategyClient;
+import com.example.amantova.wifip2pservice.IO.GossipStrategyServer;
 import com.example.amantova.wifip2pservice.IO.GpsStrategyClient;
 import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
 import com.example.amantova.wifip2pservice.format.Format;
 import com.example.amantova.wifip2pservice.IO.IOStrategy;
 import com.example.amantova.wifip2pservice.routing.Packet_table;
+import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
 import java.io.IOException;
@@ -54,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
+    private Routing_table   mRoutingTable = new Routing_table();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -228,34 +232,13 @@ public class MainActivity extends AppCompatActivity {
         }});
         mServicesClient.put("_gps", new GpsStrategyClient());
 */
+        final GossipStrategyServer gossipStrategy = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable);
         ServiceInfo gossip = new ServiceInfo() {{
             name = "_gossip";
-            type = "_presence._tcp";
-            server = new IOStrategy() {
-                @Override
-                public void run(Socket socket) {
-                    Log.d("Gossip Server","Gossip started!");
-                    try {
-                        socket.close();
-                        Log.d("Gossip Server","End!");
-                    } catch (IOException e) {
-                        Log.d("Gossip", e.toString());
-                    }
-                }
-            };
+            type = "_presence._tpc";
+            server = gossipStrategy;
         }};
-        mServicesClient.put("_gossip", new IOStrategy() {
-            @Override
-            public void run(Socket socket) {
-                Log.d("Gossip Client","Gossip started!");
-                try {
-                    socket.close();
-                    Log.d("Gossip Client","End!");
-                } catch (IOException e) {
-                    Log.d("Gossip", e.toString());
-                }
-            }
-        });
+        mServicesClient.put("_gossip", new GossipStrategyClient(mRoutingTable, mWaitingTable, mPacketTable));
 
         HashMap<String, String> record = new HashMap<>();
 
