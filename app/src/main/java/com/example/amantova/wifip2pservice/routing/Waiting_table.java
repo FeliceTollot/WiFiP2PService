@@ -28,6 +28,13 @@ public class Waiting_table{
     }
   }
 
+  public List<String> get_eids_list(){
+    Set<String> set_eids = table.keySet();
+    List<String> list = new LinkedList<String>();
+    list.addAll(set_eids);
+    return list;
+  }
+
   public Waiting_table_entry get_eid(String eid){
     return table.get(eid);
   }

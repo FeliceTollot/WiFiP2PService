@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.example.amantova.wifip2pservice.IO.IOStrategy;
 import com.example.amantova.wifip2pservice.routing.Packet_table;
+import com.example.amantova.wifip2pservice.routing.Packet_table_item;
 import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
@@ -50,11 +51,14 @@ public class GossipStrategyServer implements IOStrategy {
             input = in.readLine();
 
             if(input.equals("start_receiving_packets")){
+                input = in.readLine();
                 while(input != "end_receiving_packets"){
                     // get the packet
-                    // the packet is in string input
-                    // pass to byte array
+                    Packet_table_item packet_item = Packet_table_item.deserialize(input);
                     // store the packet in packet_table
+                    packet_table.add_packet(packet_item);
+                    // ad in waiting table
+                    waiting_table.register_eid(packet_item.dest_eid, packet_item.service, packet_item.expiration);
                     input = in.readLine();
                 }
             }
