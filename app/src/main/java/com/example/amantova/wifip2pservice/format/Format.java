@@ -162,7 +162,7 @@ public class Format{
 
     //String s = "";
 
-      ByteBuffer buffer = ByteBuffer.allocate(10*Long.BYTES);
+      ByteBuffer buffer = ByteBuffer.allocate(30*Long.BYTES);
       buffer.put(r);
       buffer.flip();//need flip
       long simpleId = buffer.getLong();
