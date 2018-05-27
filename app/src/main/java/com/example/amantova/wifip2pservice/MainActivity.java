@@ -20,6 +20,9 @@ import android.os.Debug;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
 import com.example.amantova.wifip2pservice.IO.GossipStrategyClient;
 import com.example.amantova.wifip2pservice.IO.GossipStrategyServer;
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
     private Routing_table   mRoutingTable = new Routing_table();
+
+    private String          mID = Format.gen_eid();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -155,6 +160,27 @@ public class MainActivity extends AppCompatActivity {
 
         setDiscoveryServiceListener();
         registerAvailableServices();
+
+        Button btnGetID = findViewById(R.id.btnGetID);
+        btnGetID.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                TextView txtID = findViewById(R.id.txtID);
+                txtID.setText(mID);
+            }
+        });
+
+        Button btnSendMessage = findViewById(R.id.btnSendMessage);
+        btnSendMessage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String message = ((TextView) findViewById(R.id.txtMessage)).getText().toString();
+                String recipient = ((TextView) findViewById(R.id.txtRecipient)).getText().toString();
+
+                
+            }
+        });
+
 
         discoverPeers();
     }
@@ -254,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Register Gossip service
             record.put("port", String.valueOf(initializeServerSocketForService(gossip.server)));
-            record.put("identity", Format.gen_eid());
+            record.put("identity", mID);
 
             registerService(gossip, record);
         } catch (IOException e) {
