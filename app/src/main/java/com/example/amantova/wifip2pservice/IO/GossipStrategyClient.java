@@ -90,6 +90,7 @@ public class GossipStrategyClient implements IOStrategy {
                     Packet_table_item packet_item = packet_table.get(item.eid);
                     String packet_string = Packet_table_item.serialize(packet_item);
                     // put in the list
+                    Log.d("PACKET_ON_CLIENT ", packet_string);
                     packets_list.add(packet_string);
                     // delete from packet_table
                     packet_table.remove_packet(item.eid);
