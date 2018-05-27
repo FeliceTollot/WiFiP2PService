@@ -63,7 +63,11 @@ public class GossipStrategyClient implements IOStrategy {
                 String avg = in.readLine();
                 Log.d("CLIENT_RECEIVED: ", avg);
                 // store avg-eid
-                exchange_items.add(new Exchange_item( eid, Long.parseLong(avg)));
+                if(avg.equals("NULL")){
+                    continue;
+                }else{
+                    exchange_items.add(new Exchange_item( eid, Long.parseLong(avg)));
+                }
             }
             // end sending end receiveing eids-avgs
             out.println("end_exchange_avgs");
