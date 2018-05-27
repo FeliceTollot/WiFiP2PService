@@ -268,6 +268,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDnsSdTxtRecordAvailable(String fullDomainName, final Map<String, String> txtRecordMap, WifiP2pDevice provider) {
                 final String serviceName = fullDomainName.split("\\.")[0];
+                // Register the device met
+                if (serviceName.equals("_gossip")) {
+                    mRoutingTable.meet(txtRecordMap.get("identity"));
+                    Log.d("Service Discovery", "The user " + txtRecordMap.get("identity") + " was added to the routing table");
+                }
 
                 if (mAllowServiceRequest /*&& mWaitingTable.check_service_need(serviceName)*/) {
                     mAllowServiceRequest = false;
