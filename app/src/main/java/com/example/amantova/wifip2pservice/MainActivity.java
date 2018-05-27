@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (mAllowServiceRequest) {
                 Log.d("Peers Discovery", "New peers found! Discover the provided services.");
                 // Discover the services provided by the close peers
-                // discoverService();
+                discoverService();
             }
         }
     };
@@ -187,10 +187,8 @@ public class MainActivity extends AppCompatActivity {
 
                 Packet_table_item packet = new Packet_table_item(recipient,timestamp,ttl,service,payload);
                 mPacketTable.add_packet(packet);
-                
             }
         });
-
 
         discoverPeers();
     }
@@ -305,6 +303,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDnsSdTxtRecordAvailable(String fullDomainName, final Map<String, String> txtRecordMap, WifiP2pDevice provider) {
                 final String serviceName = fullDomainName.split("\\.")[0];
+                Log.d("Service Discovery", "Service found: " + serviceName);
+
                 // Register the device met
                 if (serviceName.equals("_gossip")) {
                     Log.d("Service Discovery", "Met the user " + txtRecordMap.get("identity"));
