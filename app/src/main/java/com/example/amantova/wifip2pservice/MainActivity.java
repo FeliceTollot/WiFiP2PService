@@ -170,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 TextView txtID = findViewById(R.id.txtID);
                 byte[] id = mID.getBytes(Charset.forName("UTF-8"));
-                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+                ByteBuffer buffer = ByteBuffer.allocate(10*Long.BYTES);
                 buffer.put(id);
                 buffer.flip();//need flip
                 Log.d("LOGCLIENT:", "E QUA SIAMO ARRIVATI");
