@@ -36,7 +36,7 @@ public class GossipStrategyServer implements IOStrategy {
                             new InputStreamReader(socket.getInputStream()));
 
             String input = in.readLine();
-
+            Log.d("SERVER_RECEIVED: ", input);
             if(input.equals("start_exchange_avgs")){
                 input = in.readLine();
                 while(input != "end_exchange_avgs"){
@@ -47,8 +47,10 @@ public class GossipStrategyServer implements IOStrategy {
                     input = in.readLine();
                 }
             }
+            Log.d("SERVER_RECEIVED: ", input);
 
             input = in.readLine();
+            Log.d("SERVER_RECEIVED: ", input);
 
             if(input.equals("start_receiving_packets")){
                 input = in.readLine();
@@ -60,6 +62,7 @@ public class GossipStrategyServer implements IOStrategy {
                     input = in.readLine();
                 }
             }
+            Log.d("SERVER_RECEIVED: ", input);
 
             // now simmetrically client and server invert they're roles
 
