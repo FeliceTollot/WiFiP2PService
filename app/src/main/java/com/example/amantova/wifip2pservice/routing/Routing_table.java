@@ -39,9 +39,12 @@ public class Routing_table {
     table.remove(eid_arg);
   }
 
-  public long get_avg_time(String eid_arg){
+  public Long get_avg_time(String eid_arg){
     table_item item =  table.get(eid_arg);
-    return ( (System.currentTimeMillis()/1000) - item.first_time_seen) / (item.count_times_seen);
+    if(item != null){
+      return ( (System.currentTimeMillis()/1000) - item.first_time_seen) / (item.count_times_seen);
+    }
+    return null;
   }
 
   public Boolean to_send(String eid_arg, long avg_time_arg){
