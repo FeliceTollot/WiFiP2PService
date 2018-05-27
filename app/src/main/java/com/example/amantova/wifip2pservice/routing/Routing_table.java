@@ -57,7 +57,7 @@ public class Routing_table {
     if(item != null){
       return ( (System.currentTimeMillis()/1000) - item.first_time_seen) / (item.count_times_seen);
     }
-    return null;
+    return Long.MAX_VALUE;
   }
 
   public Boolean to_send(String eid_arg, long avg_time_arg){
