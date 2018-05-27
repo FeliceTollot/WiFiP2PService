@@ -167,12 +167,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 TextView txtID = findViewById(R.id.txtID);
-                byte[] id = mRoutingTable.get_my_eid().getBytes(Charset.forName("UTF-8"));
-                ByteBuffer buffer = ByteBuffer.allocate(10*Long.BYTES);
-                buffer.put(id);
-                buffer.flip();//need flip
-                long simpleId = buffer.getLong();
-                txtID.setText(String.valueOf(simpleId));
+                txtID.setText(mRoutingTable.get_my_eid());
             }
         });
 

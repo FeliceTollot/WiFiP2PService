@@ -11,6 +11,7 @@
 
 package com.example.amantova.wifip2pservice.format;
 
+import java.nio.charset.Charset;
 import java.util.*;
 import java.nio.ByteBuffer;
 
@@ -159,8 +160,14 @@ public class Format{
     Random rnd = new Random();
     rnd.nextBytes(r);
 
-    String s = "";
-    for(int i=0; i<3; i++){
+    //String s = "";
+
+      ByteBuffer buffer = ByteBuffer.allocate(10*Long.BYTES);
+      buffer.put(r);
+      buffer.flip();//need flip
+      long simpleId = buffer.getLong();
+
+    /*for(int i=0; i<3; i++){
       String tmp = Integer.toBinaryString(r[i] & 0xFF);
       int times = 8 - tmp.length();
       String prefix = "";
@@ -169,8 +176,8 @@ public class Format{
       }
       tmp = prefix + tmp;
       s = s + tmp;
-    }
-    return s;
+    }*/
+    return String.valueOf(simpleId);
   }
 
   //public static void main(String[] args) {
