@@ -34,9 +34,9 @@ public class GossipStrategyClient implements IOStrategy {
         public String eid;
         public long avg;
 
-        public Exchange_item(String eid, long avg){
-            eid = eid;
-            avg = avg;
+        public Exchange_item(String eid_arg, long avg_arg){
+            eid = eid_arg;
+            avg = avg_arg;
         }
     }
 
