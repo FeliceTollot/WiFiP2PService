@@ -49,7 +49,7 @@ public class GossipStrategyClient implements IOStrategy {
                             new InputStreamReader(socket.getInputStream()));
 
             // get eids
-            List<String> eids = waiting_table.get_eids_list();
+            List<String> eids = packet_table.get_eids_list();
             List<Exchange_item> exchange_items = new LinkedList<Exchange_item>();
 
             out.println("start_exchange_avgs");
@@ -81,9 +81,8 @@ public class GossipStrategyClient implements IOStrategy {
                     String packet_string = Packet_table_item.serialize(packet_item);
                     // put in the list
                     packets_list.add(packet_string);
-                    // delete from packet_table and waiting
+                    // delete from packet_table
                     packet_table.remove_packet(item.eid);
-                    waiting_table.remove_eid(item.eid);
                 }
             }
 
