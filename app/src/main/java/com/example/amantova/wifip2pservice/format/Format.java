@@ -162,10 +162,16 @@ public class Format{
 
     //String s = "";
 
-      ByteBuffer buffer = ByteBuffer.allocate(30*Long.BYTES);
+      long value = 0;
+      for (int i = 0; i < r.length; i++)
+      {
+          value = (value << 8) + (r[i] & 0xff);
+      }
+
+      /*ByteBuffer buffer = ByteBuffer.allocate(30*Long.BYTES);
       buffer.put(r);
       buffer.flip();//need flip
-      long simpleId = buffer.getLong();
+      long simpleId = buffer.getLong();*/
 
     /*for(int i=0; i<3; i++){
       String tmp = Integer.toBinaryString(r[i] & 0xFF);
@@ -177,7 +183,7 @@ public class Format{
       tmp = prefix + tmp;
       s = s + tmp;
     }*/
-    return String.valueOf(simpleId);
+    return String.valueOf(value);
   }
 
   //public static void main(String[] args) {
