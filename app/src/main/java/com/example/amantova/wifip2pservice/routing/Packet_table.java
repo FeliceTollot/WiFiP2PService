@@ -39,4 +39,10 @@ public class Packet_table {
       }
     }
   }
+  public List<String> get_eids_list(){
+    Set<String> eids = table.keySet();
+    List<String> list_eids = new LinkedList<>();
+    list_eids.addAll(eids);
+    return list_eids;
+   }
 }
