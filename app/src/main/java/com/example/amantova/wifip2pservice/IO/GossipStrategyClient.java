@@ -81,7 +81,7 @@ public class GossipStrategyClient implements IOStrategy {
             while(it.hasNext()){
                 Exchange_item item = it.next();
                 long other_avg_time = item.avg;
-                Log.d("CLIENT_EID: ", item.eid);
+                Log.d("CLIENT_EID: ", String.valueOf(item.eid==null));
                 long my_time = routing_table.get_avg_time(item.eid);
                 if(other_avg_time <= my_time){
                     // get packet
