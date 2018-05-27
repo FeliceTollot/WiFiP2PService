@@ -162,14 +162,8 @@ public class MainActivity extends AppCompatActivity {
         setDiscoveryServiceListener();
         registerAvailableServices();
 
-        Button btnGetID = findViewById(R.id.btnGetID);
-        btnGetID.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                TextView txtID = findViewById(R.id.txtID);
-                txtID.setText(mRoutingTable.get_my_eid());
-            }
-        });
+        TextView txtID = findViewById(R.id.txtID);
+        txtID.setText(mRoutingTable.get_my_eid());
 
         Button btnSendMessage = findViewById(R.id.btnSendMessage);
         btnSendMessage.setOnClickListener(new View.OnClickListener() {
