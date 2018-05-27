@@ -39,6 +39,7 @@ public class GossipStrategyServer implements IOStrategy {
             Log.d("SERVER_RECEIVED: ", input);
             if(input.equals("start_exchange_avgs")){
                 input = in.readLine();
+                Log.d("SERVER_RECEIVED: ", input);
                 while(input != "end_exchange_avgs"){
                     // recupera il avg eid
                     long avg = routing_table.get_avg_time(input);
