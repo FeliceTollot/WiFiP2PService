@@ -171,7 +171,6 @@ public class MainActivity extends AppCompatActivity {
                 ByteBuffer buffer = ByteBuffer.allocate(10*Long.BYTES);
                 buffer.put(id);
                 buffer.flip();//need flip
-                Log.d("LOGCLIENT:", "E QUA SIAMO ARRIVATI");
                 long simpleId = buffer.getLong();
                 txtID.setText(String.valueOf(simpleId));
             }
