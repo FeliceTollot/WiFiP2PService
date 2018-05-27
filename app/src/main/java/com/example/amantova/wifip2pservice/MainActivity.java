@@ -62,9 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
-    private Routing_table   mRoutingTable = new Routing_table();
-
-    private String          mID = Format.gen_eid();
+    private Routing_table   mRoutingTable = new Routing_table(Format.gen_eid());
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -168,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 TextView txtID = findViewById(R.id.txtID);
-                txtID.setText(mID);
+                txtID.setText(mRoutingTable.get_my_eid());
             }
         });
 
@@ -288,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Register Gossip service
             record.put("port", String.valueOf(initializeServerSocketForService(gossip.server)));
-            record.put("identity", mID);
+            record.put("identity", mRoutingTable.get_my_eid());
 
             registerService(gossip, record);
         } catch (IOException e) {
