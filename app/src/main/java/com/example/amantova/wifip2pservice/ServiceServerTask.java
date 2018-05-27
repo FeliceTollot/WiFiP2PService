@@ -22,7 +22,7 @@ public class ServiceServerTask extends AsyncTask<Void, Void, Void> {
     public Void doInBackground(Void... params) {
         Log.d("Server Socket", "Running in background!");
         try {
-            while (true) {
+            while (!isCancelled()) {
                 Log.d("Server Socket", "Waiting new client connections...");
                 Socket client = mServerSocket.accept();
                 Log.d("Server Socket", "A new connection was accepted (port: " + client.getLocalPort() + ").");
