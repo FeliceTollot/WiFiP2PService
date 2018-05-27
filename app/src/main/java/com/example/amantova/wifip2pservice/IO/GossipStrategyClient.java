@@ -61,6 +61,7 @@ public class GossipStrategyClient implements IOStrategy {
                 out.println(eid);
                 // get avg
                 String avg = in.readLine();
+                Log.d("CLIENT_RECEIVED: ", avg);
                 // store avg-eid
                 exchange_items.add(new Exchange_item( eid, Long.parseLong(avg)));
             }
@@ -99,6 +100,8 @@ public class GossipStrategyClient implements IOStrategy {
             // end_receiving_packets
             out.println("end_receiving_packets");
 
+            out.close();
+            in.close();
             // now simmetrically client and server invert they're roles
 
 

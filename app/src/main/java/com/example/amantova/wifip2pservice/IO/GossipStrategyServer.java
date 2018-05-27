@@ -39,12 +39,12 @@ public class GossipStrategyServer implements IOStrategy {
             Log.d("SERVER_RECEIVED: ", input);
             if(input.equals("start_exchange_avgs")){
                 input = in.readLine();
-                Log.d("SERVER_RECEIVED: ", input);
                 while(input.equals("end_exchange_avgs")==false){
                     // recupera il avg eid
                     long avg = routing_table.get_avg_time(input);
                     // trasmetti avg eid
                     out.println(avg);
+                    Log.d("SERVER_PACKET: ", input);
                     input = in.readLine();
                 }
             }
@@ -60,10 +60,11 @@ public class GossipStrategyServer implements IOStrategy {
                     Packet_table_item packet_item = Packet_table_item.deserialize(input);
                     // store the packet in packet_table
                     packet_table.add_packet(packet_item);
+                    Log.d("SERVER_PACKET: ", input);
                     input = in.readLine();
                 }
             }
-            Log.d("SERVER_RECEIVED: ", input);
+            Log.d("SERVER_PACKET: ", input);
 
             // now simmetrically client and server invert they're roles
 
