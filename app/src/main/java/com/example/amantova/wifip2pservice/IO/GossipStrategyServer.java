@@ -58,7 +58,7 @@ public class GossipStrategyServer implements IOStrategy {
                     // store the packet in packet_table
                     packet_table.add_packet(packet_item);
                     // ad in waiting table
-                    waiting_table.register_eid(packet_item.dest_eid, packet_item.service, packet_item.expiration);
+                    waiting_table.register_eid(packet_item.dest_eid, packet_item.service, packet_item.timestamp+packet_item.ttl);
                     input = in.readLine();
                 }
             }
