@@ -17,6 +17,16 @@ public class Routing_table {
     }
   }
 
+  private String my_eid;
+
+  public Routing_table(String eid){
+    my_eid = eid;
+  }
+
+  public String get_my_eid(){
+    return my_eid;
+  }
+
   private Hashtable<String, table_item> table = new Hashtable<String, table_item>();
 
   public void register_eid(String eid_arg){
@@ -40,6 +50,9 @@ public class Routing_table {
   }
 
   public Long get_avg_time(String eid_arg){
+    if(eid_arg.equals(my_eid)){
+      return 0l;
+    }
     table_item item =  table.get(eid_arg);
     if(item != null){
       return ( (System.currentTimeMillis()/1000) - item.first_time_seen) / (item.count_times_seen);
