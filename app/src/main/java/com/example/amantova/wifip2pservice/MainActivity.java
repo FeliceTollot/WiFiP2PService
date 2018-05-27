@@ -31,6 +31,7 @@ import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
 import com.example.amantova.wifip2pservice.format.Format;
 import com.example.amantova.wifip2pservice.IO.IOStrategy;
 import com.example.amantova.wifip2pservice.routing.Packet_table;
+import com.example.amantova.wifip2pservice.routing.Packet_table_item;
 import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
@@ -40,6 +41,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -177,6 +179,14 @@ public class MainActivity extends AppCompatActivity {
                 String message = ((TextView) findViewById(R.id.txtMessage)).getText().toString();
                 String recipient = ((TextView) findViewById(R.id.txtRecipient)).getText().toString();
 
+                String dest_eid = recipient;
+                long timestamp = System.currentTimeMillis()/1000;
+                long ttl = 10000;
+                String service = "_text";
+                byte[] payload = message.getBytes(Charset.forName("UTF-8"));
+
+                Packet_table_item packet = new Packet_table_item(recipient,timestamp,ttl,service,payload);
+                mPacketTable.add_packet(packet);
                 
             }
         });
