@@ -103,7 +103,7 @@ public class GossipStrategyClient implements IOStrategy {
             // send packets
             Iterator<String> itera_packet =  packets_list.iterator();
             while(itera_packet.hasNext()) {
-                String packet = itera.next();
+                String packet = itera_packet.next();
                 // send packet
                 out.println(packet);
             }
