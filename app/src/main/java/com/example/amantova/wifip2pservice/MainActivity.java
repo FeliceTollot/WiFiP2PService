@@ -9,12 +9,14 @@ import android.net.NetworkInfo;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.AsyncTask;
+import android.os.Debug;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,10 +33,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
     private final IntentFilter _IntentFilter = new IntentFilter();
@@ -59,7 +63,31 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Connection Information", info.groupOwnerAddress.getHostAddress() + " " + mWaitingService.name + ":" + mWaitingService.port);
                 InetSocketAddress target = new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), mWaitingService.port);
 
-                new ServiceClientTask(target, mServicesClient.get(mWaitingService.name)).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                AsyncTask clientTask = new ServiceClientTask(target, mServicesClient.get(mWaitingService.name)).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                try {
+                    // Waiting task ending
+                    clientTask.get();
+                    disconnectToWifiP2PDevice();
+                } catch (Exception e) {
+                    Log.d("Client Task", "Error during the task execution.");
+                    disconnectToWifiP2PDevice();
+                }
+            }
+        }
+    };
+
+    private WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
+        @Override
+        public void onPeersAvailable(WifiP2pDeviceList peers) {
+            // No peers found nearby
+            if (peers.getDeviceList().size() == 0) {
+                Log.d("Peers Discovery", "No peers found! Rescanning.");
+                // Reschedule a new peers discovery
+                discoverPeers();
+            } else if (mAllowServiceRequest) {
+                Log.d("Peers Discovery", "New peers found! Discover the provided services.");
+                // Discover the services provided by the close peers
+                discoverService();
             }
         }
     };
@@ -73,15 +101,13 @@ public class MainActivity extends AppCompatActivity {
                 // the Activity.
                 int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
                 if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                    // m_txtWifiP2PStatus.setText("On");
+                    Log.d("WiFi P2P Status", "On");
                 } else {
-                    // m_txtWifiP2PStatus.setText("Off");
+                    Log.d("WiFi P2P Status", "Off");
                 }
             } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-                Log.d("Peer Discovery", "New peers was found!");
-                if (mAllowServiceRequest) {
-                    Log.d("Peer Discovery", "Searching new services");
-                    discoverService();
+                if (mManager != null) {
+                    mManager.requestPeers(mChannel, peerListListener);
                 }
             } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
                 if (mManager == null) {
@@ -96,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
                     mManager.requestConnectionInfo(mChannel, connectionListener);
                 } else { // The devises are disconnected
                     mAllowServiceRequest = true;
+                    discoverPeers();
                 }
             }
         }
@@ -124,6 +151,24 @@ public class MainActivity extends AppCompatActivity {
         setDiscoveryServiceListener();
         registerAvailableServices();
 
+        discoverPeers();
+    }
+
+    private void disconnectToWifiP2PDevice() {
+        mManager.removeGroup(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d("Disconnection", "Success!");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.d("Disconnect", "Error: " + reason);
+            }
+        });
+    }
+
+    private void discoverPeers() {
         mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
@@ -174,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void registerAvailableServices() {
         ArrayList<ServiceInfo> providedService = new ArrayList<>();
-
+/*
         final GpsStrategyServer gps = new GpsStrategyServer(this);
         providedService.add(new ServiceInfo() {{
             name = "_gps";
@@ -182,13 +227,35 @@ public class MainActivity extends AppCompatActivity {
             server = gps;
         }});
         mServicesClient.put("_gps", new GpsStrategyClient());
-
+*/
         ServiceInfo gossip = new ServiceInfo() {{
             name = "_gossip";
             type = "_presence._tcp";
-            server = null;
+            server = new IOStrategy() {
+                @Override
+                public void run(Socket socket) {
+                    Log.d("Gossip Server","Gossip started!");
+                    try {
+                        socket.close();
+                        Log.d("Gossip Server","End!");
+                    } catch (IOException e) {
+                        Log.d("Gossip", e.toString());
+                    }
+                }
+            };
         }};
-        mServicesClient.put("_gossip", null);
+        mServicesClient.put("_gossip", new IOStrategy() {
+            @Override
+            public void run(Socket socket) {
+                Log.d("Gossip Client","Gossip started!");
+                try {
+                    socket.close();
+                    Log.d("Gossip Client","End!");
+                } catch (IOException e) {
+                    Log.d("Gossip", e.toString());
+                }
+            }
+        });
 
         HashMap<String, String> record = new HashMap<>();
 
@@ -200,13 +267,12 @@ public class MainActivity extends AppCompatActivity {
 
                 record.clear();
             }
-            /*
+
             // Register Gossip service
             record.put("port", String.valueOf(initializeServerSocketForService(gossip.server)));
             record.put("identity", Format.gen_eid());
 
             registerService(gossip, record);
-            */
         } catch (IOException e) {
             Log.e("Service Registration", "Failed to register service");
         } catch (Exception e) {
@@ -219,7 +285,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDnsSdTxtRecordAvailable(String fullDomainName, final Map<String, String> txtRecordMap, WifiP2pDevice provider) {
                 final String serviceName = fullDomainName.split("\\.")[0];
-
 
                 if (mAllowServiceRequest /*&& mWaitingTable.check_service_need(serviceName)*/) {
                     mAllowServiceRequest = false;
