@@ -39,6 +39,7 @@ public class ServiceServerTask extends AsyncTask<Void, Void, Void> {
         } finally {
             if (mServerSocket != null) {
                 try {
+                    // Try to close the server socket when the application is being close
                     mServerSocket.close();
                 } catch (IOException e) {
                     Log.e("Server socket", e.getMessage());

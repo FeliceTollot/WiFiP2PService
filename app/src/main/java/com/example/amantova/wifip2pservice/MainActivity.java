@@ -69,8 +69,9 @@ public class MainActivity extends AppCompatActivity {
 
                 AsyncTask clientTask = new ServiceClientTask(target, mServicesClient.get(mWaitingService.name)).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 try {
-                    // Waiting task ending
+                    Log.d("Client Task", "Running ...");
                     clientTask.get();
+                    Log.d("Client Task", "... completed!");
                     disconnectToWifiP2PDevice();
                 } catch (Exception e) {
                     Log.d("Client Task", "Error during the task execution.");
@@ -91,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (mAllowServiceRequest) {
                 Log.d("Peers Discovery", "New peers found! Discover the provided services.");
                 // Discover the services provided by the close peers
-                discoverService();
+                // discoverService();
             }
         }
     };
@@ -270,8 +271,8 @@ public class MainActivity extends AppCompatActivity {
                 final String serviceName = fullDomainName.split("\\.")[0];
                 // Register the device met
                 if (serviceName.equals("_gossip")) {
+                    Log.d("Service Discovery", "Met the user " + txtRecordMap.get("identity"));
                     mRoutingTable.meet(txtRecordMap.get("identity"));
-                    Log.d("Service Discovery", "The user " + txtRecordMap.get("identity") + " was added to the routing table");
                 }
 
                 if (mAllowServiceRequest /*&& mWaitingTable.check_service_need(serviceName)*/) {
