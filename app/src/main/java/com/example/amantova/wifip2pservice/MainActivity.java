@@ -79,11 +79,10 @@ public class MainActivity extends AppCompatActivity {
 
     private Timer mSchedulerTimer = new Timer();
 
-    private static final int MAX_MET_DEVICES = 5;
     private static final int PEERS_CHECK_PERIOD = 30000;
     private static final int PACKAGE_CHECK_PERIOD = 5000;
     private static final int CLEAN_MET_TABLE_PERIOD = 10 * 60 * 1000;
-    private static final int TIME_FROM_LAST_MET = 60;
+    private static final int WAITING_TIME_FOR_CONNECTION = 60;
 
     private final List<String>      mDeviceWhiteList = new LinkedList<>();
     private HashMap<String, Long>   mMetTimeTable = new HashMap<>();
@@ -93,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             // This is the client and it's waiting to satisfy its service request
             if (mWaitingDevice != null) {
+                mMetTimeTable.put(mWaitingDevice.deviceAddress, System.currentTimeMillis() / 1000);
+
                 InetSocketAddress target = new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), 2702);
 
                 GossipStrategyClient gossipClient = new GossipStrategyClient(mRoutingTable, mWaitingTable, mPacketTable);
@@ -101,9 +102,9 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("Client Task", "Running ...");
                     clientTask.get();
                     Log.d("Client Task", "... completed!");
-                    disconnectToWifiP2PDevice();
                 } catch (Exception e) {
                     Log.d("Client Task", "Error during the task execution.");
+                } finally {
                     disconnectToWifiP2PDevice();
                 }
             }
@@ -123,14 +124,14 @@ public class MainActivity extends AppCompatActivity {
                 while (itr.hasNext()) {
                     WifiP2pDevice actual = itr.next();
 
-                    Long time = mMetTimeTable.get(potentialTarget.deviceAddress);
+                    Toast.makeText(getApplicationContext(), "Met " + actual.deviceName, Toast.LENGTH_SHORT).show();
+
+                    Long time = mMetTimeTable.get(actual.deviceAddress);
                     long now = System.currentTimeMillis() / 1000;
 
-                    if (time == null || TIME_FROM_LAST_MET < now - time) {
+                    if (time == null || now - time > WAITING_TIME_FOR_CONNECTION) {
                         potentialTarget = actual;
                     }
-
-                    mMetTimeTable.put(potentialTarget.deviceAddress, now);
                 }
 /*
                 // Ignore all devices was met recently or does not provide the Gossip service
@@ -194,10 +195,6 @@ public class MainActivity extends AppCompatActivity {
                 NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
 
                 if (networkInfo.isConnected()) {
-                    // Remove the oldest device met
-                    mMetDevices.add(mWaitingDevice);
-                    if (mMetDevices.size() > MAX_MET_DEVICES) { mMetDevices.poll(); }
-
                     Log.d("Connection", "Success! The device is connected with an other one");
                     mManager.requestConnectionInfo(mChannel, connectionListener);
                 } else { // The devises are disconnected
@@ -293,11 +290,12 @@ public class MainActivity extends AppCompatActivity {
 
                     if (eid.equals(mRoutingTable.get_my_eid())) {
                         mPacketTable.remove_packet(mRoutingTable.get_my_eid());
-                        Log.d("Check Packet Table", "Found my packet! " + payload);
+
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(getApplicationContext(), payload + " by " , Toast.LENGTH_LONG).show();
+                                TextView txtMsgReceived = findViewById(R.id.txtMsgReceived);
+                                txtMsgReceived.setText("Received: " + payload);
                             }
                         });
                     } else {
@@ -316,7 +314,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 for (String device : mMetTimeTable.keySet()) {
-                    if (mMetTimeTable.get(device) > 10 * 60 * 1000) {
+                    // Ten minutes
+                    if (mMetTimeTable.get(device) > 600) {
                         mMetTimeTable.remove(device);
                     }
                 }
