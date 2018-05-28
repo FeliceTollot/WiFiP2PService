@@ -70,6 +70,40 @@
             android:layout_height="3dp"
             android:background="?android:attr/listDivider" />
 
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Provide Service:"
+            android:textSize="18sp" />
+
+        <Switch
+            android:id="@+id/switch3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GPS"
+            android:textSize="18sp" />
+
+        <Switch
+            android:id="@+id/switch4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Computation"
+            android:textSize="18sp" />
+
+        <Switch
+            android:id="@+id/switch5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Weather"
+            android:textSize="18sp" />
+
+        <View
+            android:id="@+id/divider4"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="?android:attr/listDivider" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -80,7 +114,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="ID:"
+                android:text="My ID:"
                 android:textSize="18sp" />
 
             <TextView
@@ -90,6 +124,12 @@
                 android:layout_weight="1"
                 android:textSize="18sp" />
         </LinearLayout>
+
+        <View
+            android:id="@+id/divider2"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="?android:attr/listDivider" />
 
     </LinearLayout>
 </android.support.constraint.ConstraintLayout>
