@@ -10,6 +10,7 @@ public class Routing_table {
   private class table_item{
     public long first_time_seen;
     public long count_times_seen;
+    public long last_seen;
 
     public table_item(long arg1, int arg2){
       first_time_seen = arg1;
@@ -43,6 +44,7 @@ public class Routing_table {
   public void add_seen(String eid){
     table_item item = table.get(eid);
     item.count_times_seen = item.count_times_seen + 1;
+    item.last_seen = System.currentTimeMillis()/1000;
   }
 
   public void delete_eid(String eid_arg){
@@ -80,7 +82,13 @@ public class Routing_table {
     if(registered==false){
       register_eid(eid);
     }else{
-      add_seen(eid);
+      // check time
+      long now = System.currentTimeMillis()/1000;
+      long last_seen = table.get(eid).last_seen;
+      if(now - last_seen > 1000*60*2){
+        add_seen(eid);
+      }
+
     }
 
   }
