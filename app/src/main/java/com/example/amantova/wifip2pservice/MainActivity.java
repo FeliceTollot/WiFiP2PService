@@ -316,7 +316,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Service Discovery", "Provided by: " + provider.deviceAddress);
 
                 if (serviceName.equals("_gossip")) {
-                    mRoutingTable.meet(txtRecordMap.get("identity"));
+                    // mRoutingTable.meet(txtRecordMap.get("identity"));
                     Log.d("Service Discovery", "Met " + txtRecordMap.get("identity"));
 
                     if (!mDeviceWhiteList.contains(provider.deviceAddress)) {
