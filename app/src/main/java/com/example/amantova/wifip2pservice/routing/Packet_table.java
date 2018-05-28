@@ -45,4 +45,9 @@ public class Packet_table {
     list_eids.addAll(eids);
     return list_eids;
    }
+
+   public boolean is_empty(){
+    return table.size()==0;
+   }
+
 }
