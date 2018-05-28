@@ -25,6 +25,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.amantova.wifip2pservice.IO.GossipStrategyClient;
 import com.example.amantova.wifip2pservice.IO.GossipStrategyServer;
@@ -78,11 +79,14 @@ public class MainActivity extends AppCompatActivity {
 
     private Timer mSchedulerTimer = new Timer();
 
-    private final int MAX_MET_DEVICES = 5;
-    private final int PERIOD_PEERS_CHECK = 10000;
-    private final int MAX_ATTEMPT_CONNECTION_TIME = 10000;
+    private static final int MAX_MET_DEVICES = 5;
+    private static final int PEERS_CHECK_PERIOD = 30000;
+    private static final int PACKAGE_CHECK_PERIOD = 5000;
+    private static final int CLEAN_MET_TABLE_PERIOD = 10 * 60 * 1000;
+    private static final int TIME_FROM_LAST_MET = 60;
 
-    private final List<String> mDeviceWhiteList = new LinkedList<>();
+    private final List<String>      mDeviceWhiteList = new LinkedList<>();
+    private HashMap<String, Long>   mMetTimeTable = new HashMap<>();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -114,19 +118,28 @@ public class MainActivity extends AppCompatActivity {
             // Some peers found nearby
             if (devices.size() > 0 && mWaitingDevice == null) {
                 Iterator<WifiP2pDevice> itr = devices.iterator();
-                WifiP2pDevice potentialTarget = itr.next();
+                WifiP2pDevice potentialTarget = null; // itr.next();
 
-                // Ignore all devices was met recently or does not provide the Gossip service
+                while (itr.hasNext()) {
+                    WifiP2pDevice actual = itr.next();
+
+                    Long time = mMetTimeTable.get(potentialTarget.deviceAddress);
+                    long now = System.currentTimeMillis() / 1000;
+
+                    if (time == null || TIME_FROM_LAST_MET < now - time) {
+                        potentialTarget = actual;
+                    }
+
+                    mMetTimeTable.put(potentialTarget.deviceAddress, now);
+                }
 /*
+                // Ignore all devices was met recently or does not provide the Gossip service
                 while (!mDeviceWhiteList.contains(potentialTarget.deviceAddress)) {
                     Log.d("Peers Discovery", potentialTarget.deviceName + " (" + potentialTarget.deviceAddress + ")");
                     if (itr.hasNext()) { potentialTarget = itr.next(); }
                     else { potentialTarget = null; break; }
                 }
 */
-
-                Log.d("Packet Table", String.valueOf(mPacketTable.is_empty()));
-
                 if (potentialTarget != null && !mPacketTable.is_empty()) {
                     final WifiP2pDevice target = potentialTarget;
                     mWaitingDevice = target;
@@ -140,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
                     mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
                         @Override
                         public void onSuccess() {
+                            Toast.makeText(getApplicationContext(), "Connecting to " + target.deviceName, Toast.LENGTH_LONG).show();
                             Log.d("Connection", "Launched!");
                         }
 
@@ -219,7 +233,14 @@ public class MainActivity extends AppCompatActivity {
         // List of available services
         mServices.add("computation");
         mServices.add("gps");
-
+/*
+        // PhonePad MAC Address
+        mDeviceWhiteList.add("02:08:22:0d:4f:a3");
+        // Samsung MAC Address
+        mDeviceWhiteList.add("82:57:19:50:a5:59");
+        // Samsung Galaxy MAC Address
+        mDeviceWhiteList.add("f2:5b:7b:03:d3:85");
+*/
         startGossipService();
 
         TextView txtID = findViewById(R.id.txtID);
@@ -229,8 +250,11 @@ public class MainActivity extends AppCompatActivity {
         btnSendMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String message = ((TextView) findViewById(R.id.txtMessage)).getText().toString();
-                String recipient = ((TextView) findViewById(R.id.txtRecipient)).getText().toString();
+                TextView txtMessage = findViewById(R.id.txtMessage);
+                TextView txtRecipient = findViewById(R.id.txtRecipient);
+
+                String message = txtMessage.getText().toString();
+                String recipient = txtRecipient.getText().toString();
 
                 String dest_eid = recipient;
                 long timestamp = System.currentTimeMillis()/1000;
@@ -240,6 +264,12 @@ public class MainActivity extends AppCompatActivity {
 
                 Packet_table_item packet = new Packet_table_item(recipient,timestamp,ttl,service,payload);
                 mPacketTable.add_packet(packet);
+
+                txtMessage.setText("");
+                txtRecipient.setText("");
+
+                Toast toast = Toast.makeText(getApplicationContext(), "Message sent!", Toast.LENGTH_SHORT);
+                toast.show();
             }
         });
 
@@ -251,7 +281,51 @@ public class MainActivity extends AppCompatActivity {
                 discoverPeers();
             }
         };
-        mSchedulerTimer.schedule(peersCheck, 1, PERIOD_PEERS_CHECK);
+
+        TimerTask packageTableCheck = new TimerTask() {
+            @Override
+            public void run() {
+                for (String eid : mPacketTable.get_eids_list()) {
+                    Packet_table_item myPacket = mPacketTable.get(eid);
+
+                    final String payload = new String(myPacket.payload, Charset.forName("UTF-8"));
+                    final String recipient = new String(myPacket.dest_eid);
+
+                    if (eid.equals(mRoutingTable.get_my_eid())) {
+                        mPacketTable.remove_packet(mRoutingTable.get_my_eid());
+                        Log.d("Check Packet Table", "Found my packet! " + payload);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), payload + " by " , Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "Hold '" + payload + "' for " + recipient, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+                }
+            }
+        };
+
+        TimerTask cleanMetTableTask = new TimerTask() {
+            @Override
+            public void run() {
+                for (String device : mMetTimeTable.keySet()) {
+                    if (mMetTimeTable.get(device) > 10 * 60 * 1000) {
+                        mMetTimeTable.remove(device);
+                    }
+                }
+            }
+        };
+
+        mSchedulerTimer.schedule(packageTableCheck, 1, PACKAGE_CHECK_PERIOD);
+        mSchedulerTimer.schedule(peersCheck, 1, PEERS_CHECK_PERIOD);
+        mSchedulerTimer.schedule(cleanMetTableTask, 1, CLEAN_MET_TABLE_PERIOD);
     }
 
     private void disconnectToWifiP2PDevice() {
