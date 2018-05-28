@@ -117,13 +117,15 @@ public class MainActivity extends AppCompatActivity {
                 WifiP2pDevice potentialTarget = itr.next();
 
                 // Ignore all devices was met recently or does not provide the Gossip service
+/*
                 while (!mDeviceWhiteList.contains(potentialTarget.deviceAddress)) {
                     Log.d("Peers Discovery", potentialTarget.deviceName + " (" + potentialTarget.deviceAddress + ")");
                     if (itr.hasNext()) { potentialTarget = itr.next(); }
                     else { potentialTarget = null; break; }
                 }
+*/
 
-                Log.d("Packet table", String.valueOf(mPacketTable.is_empty()));
+                Log.d("Packet Table", String.valueOf(mPacketTable.is_empty()));
 
                 if (potentialTarget != null && !mPacketTable.is_empty()) {
                     final WifiP2pDevice target = potentialTarget;
@@ -212,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
         mManager = (WifiP2pManager) getSystemService(getApplicationContext().WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
 
-        setDiscoveryServiceListener();
+        // setDiscoveryServiceListener();
 
         // List of available services
         mServices.add("computation");
@@ -245,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 // Log.d("Peers Discovering", "Rescheduled Peer Discovery");
-                discoverService();
+                // discoverService();
                 discoverPeers();
             }
         };
@@ -282,6 +284,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void discoverService() {
+        setDiscoveryServiceListener();
+
         mManager.addServiceRequest(mChannel, WifiP2pDnsSdServiceRequest.newInstance(), new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
@@ -356,7 +360,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void registerGossipService(HashMap<String, String> record) {
-        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_gossip", "_presence._tcp", record);
+        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_gossip" + mRoutingTable.get_my_eid(), "_presence._tcp", record);
 
         // Add the local service, sending the service info, network channel,
         // and listener that will be used to indicate success or failure of
