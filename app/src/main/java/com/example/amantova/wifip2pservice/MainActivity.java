@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
     private Timer mSchedulerTimer = new Timer();
 
     private final int MAX_MET_DEVICES = 5;
-    private final int PERIOD_PEERS_CHECK = 30000;
+    private final int PERIOD_PEERS_CHECK = 10000;
     private final int MAX_ATTEMPT_CONNECTION_TIME = 10000;
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
@@ -116,43 +116,34 @@ public class MainActivity extends AppCompatActivity {
                 Iterator<WifiP2pDevice> itr = devices.iterator();
                 WifiP2pDevice potentialTarget = itr.next();
 
-                Log.d("Peers Discovery", potentialTarget.deviceName + " ( " + potentialTarget.deviceAddress + " )");
-
                 while (mMetDevices.contains(potentialTarget.deviceAddress)) {
+                    Log.d("Peers Discovery", potentialTarget.deviceName + " ( " + potentialTarget.deviceAddress + " )");
                     if (itr.hasNext()) { potentialTarget = itr.next(); }
                     else { potentialTarget = null; break; }
-                    Log.d("Peers Discovery", potentialTarget.deviceName + " ( " + potentialTarget.deviceAddress + " )");
                 }
 
-                if (potentialTarget != null) {
+                if (potentialTarget != null && mPacketTable.is_empty()) {
                     final WifiP2pDevice target = potentialTarget;
                     mWaitingDevice = target;
 
                     Log.d("Connection","Attempting to connect with: " + target.deviceName + " (" + target.deviceAddress + ")");
 
-                    TimerTask connectionTask = new TimerTask() {
+                    WifiP2pConfig config = new WifiP2pConfig();
+                    config.deviceAddress = target.deviceAddress;
+                    config.wps.setup = WpsInfo.PBC;
+
+                    mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
                         @Override
-                        public void run() {
-                            WifiP2pConfig config = new WifiP2pConfig();
-                            config.deviceAddress = target.deviceAddress;
-                            config.wps.setup = WpsInfo.PBC;
-
-                            mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
-                                @Override
-                                public void onSuccess() {
-                                    Log.d("Connection", "Launched!");
-                                }
-
-                                @Override
-                                public void onFailure(int reason) {
-                                    mWaitingDevice = null;
-                                    Log.d("Connection", "Connect failed");
-                                }
-                            });
+                        public void onSuccess() {
+                            Log.d("Connection", "Launched!");
                         }
-                    };
 
-                    mSchedulerTimer.schedule(connectionTask, new Random().nextInt(10) * 1000);
+                        @Override
+                        public void onFailure(int reason) {
+                            mWaitingDevice = null;
+                            Log.d("Connection", "Connect failed");
+                        }
+                    });
                 }
             }
         }
@@ -245,16 +236,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        discoverPeers();
-
         TimerTask peersCheck = new TimerTask() {
             @Override
             public void run() {
-                Log.d("Peers Discovering", "Reschedule");
+                Log.d("Peers Discovering", "Rescheduled Peer Discovery");
                 discoverPeers();
             }
         };
-        // mSchedulerTimer.schedule(peersCheck, 0, PERIOD_PEERS_CHECK);
+        mSchedulerTimer.schedule(peersCheck, 1000, PERIOD_PEERS_CHECK);
     }
 
     private void disconnectToWifiP2PDevice() {
