@@ -63,4 +63,8 @@ public class Waiting_table{
     return false;
   }
 
+  public boolean is_empty(){
+    return this.size()==0;
+  }
+
 }
