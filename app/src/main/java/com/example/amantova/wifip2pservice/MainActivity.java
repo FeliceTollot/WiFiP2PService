@@ -65,8 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private Channel         mChannel;
     private WifiP2pManager  mManager;
 
-    private boolean         mAllowServiceRequest = true;
-
     private HashMap<String, IOStrategy> mServicesClient = new HashMap<>();
 
     private List<String>    mServices = new LinkedList<>();
@@ -83,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private final int MAX_MET_DEVICES = 5;
     private final int PERIOD_PEERS_CHECK = 10000;
     private final int MAX_ATTEMPT_CONNECTION_TIME = 10000;
+
+    private final List<String> mDeviceWhiteList = new LinkedList<>();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -116,13 +116,16 @@ public class MainActivity extends AppCompatActivity {
                 Iterator<WifiP2pDevice> itr = devices.iterator();
                 WifiP2pDevice potentialTarget = itr.next();
 
-                while (mMetDevices.contains(potentialTarget.deviceAddress)) {
-                    Log.d("Peers Discovery", potentialTarget.deviceName + " ( " + potentialTarget.deviceAddress + " )");
+                // Ignore all devices was met recently or does not provide the Gossip service
+                while (!mDeviceWhiteList.contains(potentialTarget.deviceAddress)) {
+                    Log.d("Peers Discovery", potentialTarget.deviceName + " (" + potentialTarget.deviceAddress + ")");
                     if (itr.hasNext()) { potentialTarget = itr.next(); }
                     else { potentialTarget = null; break; }
                 }
 
-                if (potentialTarget != null && mPacketTable.is_empty()) {
+                Log.d("Packet table", String.valueOf(mPacketTable.is_empty()));
+
+                if (potentialTarget != null && !mPacketTable.is_empty()) {
                     final WifiP2pDevice target = potentialTarget;
                     mWaitingDevice = target;
 
@@ -182,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("Connection", "Success! The device is connected with an other one");
                     mManager.requestConnectionInfo(mChannel, connectionListener);
                 } else { // The devises are disconnected
-                    mAllowServiceRequest = true;
+                    mWaitingDevice = null;
                     discoverPeers();
                 }
             }
@@ -209,11 +212,13 @@ public class MainActivity extends AppCompatActivity {
         mManager = (WifiP2pManager) getSystemService(getApplicationContext().WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
 
+        setDiscoveryServiceListener();
+
         // List of available services
         mServices.add("computation");
         mServices.add("gps");
 
-        startGossipServer();
+        startGossipService();
 
         TextView txtID = findViewById(R.id.txtID);
         txtID.setText(mRoutingTable.get_my_eid());
@@ -239,11 +244,12 @@ public class MainActivity extends AppCompatActivity {
         TimerTask peersCheck = new TimerTask() {
             @Override
             public void run() {
-                Log.d("Peers Discovering", "Rescheduled Peer Discovery");
+                // Log.d("Peers Discovering", "Rescheduled Peer Discovery");
+                discoverService();
                 discoverPeers();
             }
         };
-        mSchedulerTimer.schedule(peersCheck, 1000, PERIOD_PEERS_CHECK);
+        mSchedulerTimer.schedule(peersCheck, 1, PERIOD_PEERS_CHECK);
     }
 
     private void disconnectToWifiP2PDevice() {
@@ -275,16 +281,98 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void startGossipServer() {
+    private void discoverService() {
+        mManager.addServiceRequest(mChannel, WifiP2pDnsSdServiceRequest.newInstance(), new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d("AddServiceRequest", "Success!");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.d("AddServiceRequest", "Service Request Error: " + reason);
+            }
+        });
+
+        mManager.discoverServices(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d("ServiceDiscovering", "Launched!");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.d("ServiceDiscovering", "Service Discover Error: " + reason);
+            }
+        });
+    }
+
+    private void setDiscoveryServiceListener() {
+        WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
+            @Override
+            public void onDnsSdTxtRecordAvailable(String fullDomainName, final Map<String, String> txtRecordMap, WifiP2pDevice provider) {
+                final String serviceName = fullDomainName.split("\\.")[0];
+                Log.d("Service Discovery", "Service found: " + serviceName);
+                Log.d("Service Discovery", "Provided by: " + provider.deviceAddress);
+
+                if (serviceName.equals("_gossip")) {
+                    mRoutingTable.meet(txtRecordMap.get("identity"));
+                    Log.d("Service Discovery", "Met " + txtRecordMap.get("identity"));
+
+                    if (!mDeviceWhiteList.contains(provider.deviceAddress)) {
+                        mDeviceWhiteList.add(provider.deviceAddress);
+                        Log.d("Service Discovery", "The peer " + txtRecordMap.get("identity") + " (" + provider.deviceAddress + ") was added to the white list.");
+                    }
+                }
+            }
+        };
+
+        WifiP2pManager.DnsSdServiceResponseListener serviceListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+            @Override
+            public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice provider) {
+                Log.d("Service Discovery", "Message: " + instanceName + " " + registrationType);
+            }
+        };
+
+        mManager.setDnsSdResponseListeners(mChannel, serviceListener, txtListener);
+    }
+
+    private void startGossipService() {
         IOStrategy gossipServer = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable);
 
         try {
             ServerSocket serverSocket = new ServerSocket(2702);
             Log.d("Start Gossip", "Starting Gossip service on port " + serverSocket.getLocalPort());
             new ServiceServerTask(serverSocket, gossipServer).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+            HashMap<String, String> record = new HashMap<>();
+            record.put("port", String.valueOf(serverSocket.getLocalPort()));
+            record.put("identity", mRoutingTable.get_my_eid());
+
+            registerGossipService(record);
         } catch (IOException e) {
             Log.d("Start Gossip", e.getMessage());
         }
+    }
+
+    private void registerGossipService(HashMap<String, String> record) {
+        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_gossip", "_presence._tcp", record);
+
+        // Add the local service, sending the service info, network channel,
+        // and listener that will be used to indicate success or failure of
+        // the request.
+        mManager.addLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d("Gossip Registration","Success!!");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                Log.e("Gossip Registration", String.valueOf(reason));
+                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+            }
+        });
     }
 
     @Override
