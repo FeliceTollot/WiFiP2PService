@@ -124,12 +124,11 @@ public class MainActivity extends AppCompatActivity {
                 while (itr.hasNext()) {
                     WifiP2pDevice actual = itr.next();
 
-                    Toast.makeText(getApplicationContext(), "Met " + actual.deviceName, Toast.LENGTH_SHORT).show();
-
                     Long time = mMetTimeTable.get(actual.deviceAddress);
                     long now = System.currentTimeMillis() / 1000;
 
-                    if (time == null || now - time > WAITING_TIME_FOR_CONNECTION) {
+                    if ((time == null || now - time > WAITING_TIME_FOR_CONNECTION) && mDeviceWhiteList.contains(actual.deviceAddress)) {
+                        Toast.makeText(getApplicationContext(), "Met " + actual.deviceName, Toast.LENGTH_SHORT).show();
                         potentialTarget = actual;
                     }
                 }
@@ -227,17 +226,17 @@ public class MainActivity extends AppCompatActivity {
 
         // setDiscoveryServiceListener();
 
-        // List of available services
-        mServices.add("computation");
-        mServices.add("gps");
-/*
         // PhonePad MAC Address
         mDeviceWhiteList.add("02:08:22:0d:4f:a3");
         // Samsung MAC Address
         mDeviceWhiteList.add("82:57:19:50:a5:59");
         // Samsung Galaxy MAC Address
         mDeviceWhiteList.add("f2:5b:7b:03:d3:85");
-*/
+
+        // List of available services
+        mServices.add("computation");
+        mServices.add("gps");
+
         startGossipService();
 
         TextView txtID = findViewById(R.id.txtID);
