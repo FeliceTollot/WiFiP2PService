@@ -85,15 +85,18 @@ public class GossipStrategyClient implements IOStrategy {
                 Log.d("CLIENT_EID: ", String.valueOf(item.eid==null));
                 long my_time = routing_table.get_avg_time(item.eid);
 
+                // TODO
                 if(other_avg_time <= my_time ){
-                    // get packet
-                    Packet_table_item packet_item = packet_table.get(item.eid);
-                    String packet_string = Packet_table_item.serialize(packet_item);
-                    // put in the list
-                    Log.d("PACKET_ON_CLIENT ", packet_string);
-                    packets_list.add(packet_string);
+                    // get packet list
+                    List<Packet_table_item> packet_item_list = packet_table.get_packet_list(item.eid);
+                    // convert to string each packet of the string
+                    for(Packet_table_item list_item : packet_item_list){
+                        String packet_string = Packet_table_item.serialize(list_item);
+                        Log.d("PACKET_ON_CLIENT ", packet_string);
+                        packets_list.add(packet_string);
+                    }
                     // delete from packet_table
-                    packet_table.remove_packet(item.eid);
+                    packet_table.remove_packet_list(item.eid);
                 }
             }
 
@@ -118,7 +121,5 @@ public class GossipStrategyClient implements IOStrategy {
         }catch (IOException exc){
             Log.d("IOEXCEPTION",String.valueOf(exc.getCause()));
         }
-
     }
-
 }
