@@ -39,6 +39,17 @@ public class Packet_table {
   public List<Packet_table_item> get_packet_list(String eid_arg){
     return table.get(eid_arg);
   }
+  public List<Packet_table_item> get_list_for_service(String eid_arg, String service){
+    List<Packet_table_item> list_items = get_packet_list(eid_arg);
+    List<Packet_table_item> result_items = new LinkedList<>();
+    for(Packet_table_item item : list_items){
+      if(item.service.equals(service)){
+        result_items.add(item);
+      }
+    }
+    return result_items;
+  }
+
   public List<String> get_eids_list(){
     Set<String> eids = table.keySet();
     List<String> list_eids = new LinkedList<>();
@@ -55,6 +66,9 @@ public class Packet_table {
 
    public int number_of_packets_for(String eid_dest){
       List<Packet_table_item> packets_list = get_packet_list(eid_dest);
+      if(packets_list == null){
+        return 0;
+      }
       return packets_list.size();
    }
 
