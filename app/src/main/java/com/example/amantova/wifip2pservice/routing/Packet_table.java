@@ -13,6 +13,7 @@ public class Packet_table {
     if (list == null) {
       list = new LinkedList<Packet_table_item>();
       list.add(packet_arg);
+      table.put(packet_arg.dest_eid, list);
     } else {
       list.add(packet_arg);
     }
