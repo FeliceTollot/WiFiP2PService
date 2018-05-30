@@ -1,13 +1,10 @@
 package com.example.amantova.wifip2pservice;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -18,7 +15,6 @@ import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.AsyncTask;
-import android.os.Debug;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,8 +25,6 @@ import android.widget.Toast;
 
 import com.example.amantova.wifip2pservice.IO.GossipStrategyClient;
 import com.example.amantova.wifip2pservice.IO.GossipStrategyServer;
-import com.example.amantova.wifip2pservice.IO.GpsStrategyClient;
-import com.example.amantova.wifip2pservice.IO.GpsStrategyServer;
 import com.example.amantova.wifip2pservice.format.Format;
 import com.example.amantova.wifip2pservice.IO.IOStrategy;
 import com.example.amantova.wifip2pservice.routing.Packet_table;
@@ -39,62 +33,53 @@ import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
+    private static final long PEERS_CHECK_PERIOD = TimeUnit.SECONDS.toMillis(30);
+    private static final long PACKAGE_CHECK_PERIOD = TimeUnit.SECONDS.toMillis(5);
+    private static final long CLEAN_ROUTING_TABLE_PERIOD = TimeUnit.MINUTES.toMillis(10);
+
+    private static final long TIME_LAST_MEET_THRESHOLD_IN_SECONDS = TimeUnit.SECONDS.toSeconds(10);
+    private static final long MAX_TIME_RELATIONSHIP_IN_SECONDS = TimeUnit.DAYS.toSeconds(30);
+
+    private static final String IDENTITY_TAG = "identity";
+    private static final String PORT_TAG = "port";
+    private static final String GOSSIP_SERVICE_TAG = "_gossip";
+
     private final IntentFilter _IntentFilter = new IntentFilter();
 
     private Channel         mChannel;
     private WifiP2pManager  mManager;
 
-    private HashMap<String, IOStrategy> mServicesClient = new HashMap<>();
-
     private List<String>    mServices = new LinkedList<>();
 
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
-    private Routing_table   mRoutingTable = new Routing_table(Format.gen_eid());
+    private Routing_table   mRoutingTable = new Routing_table(Format.gen_eid(), MAX_TIME_RELATIONSHIP_IN_SECONDS);
 
-    private Queue<WifiP2pDevice>    mMetDevices = new LinkedList<>();
-    private WifiP2pDevice           mWaitingDevice = null;
+    private final HashMap<String, GossipPeer>   mDeviceWhiteList = new HashMap<>();
+    private Timer                               mSchedulerTimer = new Timer();
 
-    private Timer mSchedulerTimer = new Timer();
-
-    private static final int PEERS_CHECK_PERIOD = 30000;
-    private static final int PACKAGE_CHECK_PERIOD = 5000;
-    private static final int CLEAN_MET_TABLE_PERIOD = 10 * 60 * 1000;
-    private static final int WAITING_TIME_FOR_CONNECTION = 60;
-
-    private final List<String>      mDeviceWhiteList = new LinkedList<>();
-    private HashMap<String, Long>   mMetTimeTable = new HashMap<>();
+    private WifiP2pDevice mWaitingDevice = null;
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             // This is the client and it's waiting to satisfy its service request
             if (mWaitingDevice != null) {
-                mMetTimeTable.put(mWaitingDevice.deviceAddress, System.currentTimeMillis() / 1000);
-
-                InetSocketAddress target = new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), 2702);
+                InetSocketAddress target = new InetSocketAddress(info.groupOwnerAddress.getHostAddress(), mDeviceWhiteList.get(mWaitingDevice.deviceAddress).port);
 
                 GossipStrategyClient gossipClient = new GossipStrategyClient(mRoutingTable, mWaitingTable, mPacketTable);
                 AsyncTask clientTask = new ServiceClientTask(target, gossipClient).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
@@ -105,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Log.d("Client Task", "Error during the task execution.");
                 } finally {
-                    disconnectToWifiP2PDevice();
+                    disconnectWifiP2P();
                 }
             }
         }
@@ -116,31 +101,42 @@ public class MainActivity extends AppCompatActivity {
         public void onPeersAvailable(WifiP2pDeviceList peerList) {
             Collection<WifiP2pDevice> devices = peerList.getDeviceList();
 
-            // Some peers found nearby
-            if (devices.size() > 0 && mWaitingDevice == null) {
+            // Some peers found nearby and this device has to delivery some packets
+            if (devices.size() > 0 && mWaitingDevice == null && !mPacketTable.is_empty()) {
                 Iterator<WifiP2pDevice> itr = devices.iterator();
-                WifiP2pDevice potentialTarget = null; // itr.next();
+                WifiP2pDevice potentialTarget = null;
+
+                int packetToDeliveryForDevice = 0;
 
                 while (itr.hasNext()) {
                     WifiP2pDevice actual = itr.next();
+                    Log.d("Peers List", "Visible Peer: " + actual.deviceName + " (" + actual.deviceAddress + ")");
+                    Log.d("Peers List", "Device " + actual.deviceName + " is in the white list: " + mDeviceWhiteList.containsKey(actual.deviceAddress));
 
-                    Long time = mMetTimeTable.get(actual.deviceAddress);
-                    long now = System.currentTimeMillis() / 1000;
+                    if (mDeviceWhiteList.containsKey(actual.deviceAddress)) {
+                        String eid = mDeviceWhiteList.get(actual.deviceAddress).id;
+                        List<Packet_table_item> listPacket = mPacketTable.get_packet_list(eid);
 
-                    if ((time == null || now - time > WAITING_TIME_FOR_CONNECTION) && mDeviceWhiteList.contains(actual.deviceAddress)) {
-                        Toast.makeText(getApplicationContext(), "Met " + actual.deviceName, Toast.LENGTH_SHORT).show();
-                        potentialTarget = actual;
+                        String actualIdentity = mDeviceWhiteList.get(actual.deviceAddress).id;
+                        long elapsedTimeFromLastMeet = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) - mRoutingTable.last_time_seen(actualIdentity);
+
+                        Log.d("Peers List", "Number of packets to delivery to " + actual.deviceName + ": " + ((listPacket != null) ? listPacket.size() : 0));
+                        Log.d("Peers List", elapsedTimeFromLastMeet + " > " + TIME_LAST_MEET_THRESHOLD_IN_SECONDS);
+
+                        // Give the priority to device with the greatest number of packet to delivery to it
+                        if (listPacket != null && listPacket.size() > packetToDeliveryForDevice) {
+                            packetToDeliveryForDevice = listPacket.size();
+                            potentialTarget = actual;
+                        // There is no destination nearby
+                        } else if (packetToDeliveryForDevice == 0) {
+                            if (mRoutingTable.last_time_seen(actualIdentity) == 0 || elapsedTimeFromLastMeet > TIME_LAST_MEET_THRESHOLD_IN_SECONDS) {
+                                potentialTarget = actual;
+                            }
+                        }
                     }
                 }
-/*
-                // Ignore all devices was met recently or does not provide the Gossip service
-                while (!mDeviceWhiteList.contains(potentialTarget.deviceAddress)) {
-                    Log.d("Peers Discovery", potentialTarget.deviceName + " (" + potentialTarget.deviceAddress + ")");
-                    if (itr.hasNext()) { potentialTarget = itr.next(); }
-                    else { potentialTarget = null; break; }
-                }
-*/
-                if (potentialTarget != null && !mPacketTable.is_empty()) {
+
+                if (potentialTarget != null) {
                     final WifiP2pDevice target = potentialTarget;
                     mWaitingDevice = target;
 
@@ -224,19 +220,11 @@ public class MainActivity extends AppCompatActivity {
         mManager = (WifiP2pManager) getSystemService(getApplicationContext().WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
 
-        // setDiscoveryServiceListener();
-
-        // PhonePad MAC Address
-        mDeviceWhiteList.add("02:08:22:0d:4f:a3");
-        // Samsung MAC Address
-        mDeviceWhiteList.add("82:57:19:50:a5:59");
-        // Samsung Galaxy MAC Address
-        mDeviceWhiteList.add("f2:5b:7b:03:d3:85");
-
         // List of available services
         mServices.add("computation");
         mServices.add("gps");
 
+        setDiscoveryServiceListener();
         startGossipService();
 
         TextView txtID = findViewById(R.id.txtID);
@@ -271,25 +259,23 @@ public class MainActivity extends AppCompatActivity {
 
         TimerTask peersCheck = new TimerTask() {
             @Override
-            public void run() {
-                // Log.d("Peers Discovering", "Rescheduled Peer Discovery");
-                // discoverService();
-                discoverPeers();
-            }
+            public void run() { discoverService(); }
         };
 
         TimerTask packageTableCheck = new TimerTask() {
             @Override
             public void run() {
-                for (String eid : mPacketTable.get_eids_list()) {
-                    Packet_table_item myPacket = mPacketTable.get(eid);
+                Log.d("Packet Table", "Size Packet Table " + mPacketTable.get_eids_list().size());
 
-                    final String payload = new String(myPacket.payload, Charset.forName("UTF-8"));
-                    final String recipient = new String(myPacket.dest_eid);
+                for (String eid : mPacketTable.get_eids_list()) {
+                    List<Packet_table_item> myPacket = mPacketTable.get_packet_list(eid);
+
+                    Log.d("Packet Table", eid + " has " + myPacket.size() + " packets to delivery");
+
+                    final String payload = new String(myPacket.get(0).payload, Charset.forName("UTF-8"));
+                    final String recipient = new String(myPacket.get(0).dest_eid);
 
                     if (eid.equals(mRoutingTable.get_my_eid())) {
-                        mPacketTable.remove_packet(mRoutingTable.get_my_eid());
-
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -309,28 +295,22 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        TimerTask cleanMetTableTask = new TimerTask() {
+        TimerTask cleanRoutingTableTask = new TimerTask() {
             @Override
-            public void run() {
-                for (String device : mMetTimeTable.keySet()) {
-                    // Ten minutes
-                    if (mMetTimeTable.get(device) > 600) {
-                        mMetTimeTable.remove(device);
-                    }
-                }
-            }
+            public void run() { mRoutingTable.clean(); }
         };
 
-        mSchedulerTimer.schedule(packageTableCheck, 1, PACKAGE_CHECK_PERIOD);
-        mSchedulerTimer.schedule(peersCheck, 1, PEERS_CHECK_PERIOD);
-        mSchedulerTimer.schedule(cleanMetTableTask, 1, CLEAN_MET_TABLE_PERIOD);
+        mSchedulerTimer.schedule(packageTableCheck, 0, PACKAGE_CHECK_PERIOD);
+        mSchedulerTimer.schedule(peersCheck, 0, PEERS_CHECK_PERIOD);
+        mSchedulerTimer.schedule(cleanRoutingTableTask, 0, CLEAN_ROUTING_TABLE_PERIOD);
+
+        discoverService();
     }
 
-    private void disconnectToWifiP2PDevice() {
+    private void disconnectWifiP2P() {
         mManager.removeGroup(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                mWaitingDevice = null;
                 Log.d("Disconnection", "Success!");
             }
 
@@ -356,8 +336,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void discoverService() {
-        setDiscoveryServiceListener();
-
         mManager.addServiceRequest(mChannel, WifiP2pDnsSdServiceRequest.newInstance(), new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
@@ -391,13 +369,16 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Service Discovery", "Service found: " + serviceName);
                 Log.d("Service Discovery", "Provided by: " + provider.deviceAddress);
 
-                if (serviceName.equals("_gossip")) {
-                    // mRoutingTable.meet(txtRecordMap.get("identity"));
-                    Log.d("Service Discovery", "Met " + txtRecordMap.get("identity"));
+                if (serviceName.equals(GOSSIP_SERVICE_TAG)) {
+                    mRoutingTable.meet(txtRecordMap.get(IDENTITY_TAG));
 
-                    if (!mDeviceWhiteList.contains(provider.deviceAddress)) {
-                        mDeviceWhiteList.add(provider.deviceAddress);
-                        Log.d("Service Discovery", "The peer " + txtRecordMap.get("identity") + " (" + provider.deviceAddress + ") was added to the white list.");
+                    if (!mDeviceWhiteList.containsKey(provider.deviceAddress)) {
+                        Toast.makeText(getApplicationContext(), "Meet " + txtRecordMap.get(IDENTITY_TAG) + ":" + txtRecordMap.get(PORT_TAG), Toast.LENGTH_SHORT).show();
+
+                        GossipPeer peer = new GossipPeer(txtRecordMap.get(IDENTITY_TAG), Integer.parseInt(txtRecordMap.get(PORT_TAG)));
+
+                        mDeviceWhiteList.put(provider.deviceAddress, peer);
+                        Log.d("Service Discovery", "The peer " + txtRecordMap.get(IDENTITY_TAG) + " (" + provider.deviceAddress + ") was added to the white list.");
                     }
                 }
             }
@@ -417,13 +398,13 @@ public class MainActivity extends AppCompatActivity {
         IOStrategy gossipServer = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable);
 
         try {
-            ServerSocket serverSocket = new ServerSocket(2702);
+            ServerSocket serverSocket = new ServerSocket(0);
             Log.d("Start Gossip", "Starting Gossip service on port " + serverSocket.getLocalPort());
             new ServiceServerTask(serverSocket, gossipServer).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 
             HashMap<String, String> record = new HashMap<>();
-            record.put("port", String.valueOf(serverSocket.getLocalPort()));
-            record.put("identity", mRoutingTable.get_my_eid());
+            record.put(PORT_TAG, String.valueOf(serverSocket.getLocalPort()));
+            record.put(IDENTITY_TAG, mRoutingTable.get_my_eid());
 
             registerGossipService(record);
         } catch (IOException e) {
@@ -432,7 +413,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void registerGossipService(HashMap<String, String> record) {
-        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_gossip" + mRoutingTable.get_my_eid(), "_presence._tcp", record);
+        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance(GOSSIP_SERVICE_TAG, "_presence._tcp", record);
 
         // Add the local service, sending the service info, network channel,
         // and listener that will be used to indicate success or failure of
