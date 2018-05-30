@@ -65,6 +65,9 @@ public class Packet_table {
 
    public int number_of_packets_for(String eid_dest){
       List<Packet_table_item> packets_list = get_packet_list(eid_dest);
+      if(packets_list == null){
+        return 0;
+      }
       return packets_list.size();
    }
 
