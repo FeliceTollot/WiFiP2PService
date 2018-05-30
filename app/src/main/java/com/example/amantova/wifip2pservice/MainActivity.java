@@ -265,12 +265,8 @@ public class MainActivity extends AppCompatActivity {
         TimerTask packageTableCheck = new TimerTask() {
             @Override
             public void run() {
-                Log.d("Packet Table", "Size Packet Table " + mPacketTable.get_eids_list().size());
-
                 for (String eid : mPacketTable.get_eids_list()) {
                     List<Packet_table_item> myPacket = mPacketTable.get_packet_list(eid);
-
-                    Log.d("Packet Table", eid + " has " + myPacket.size() + " packets to delivery");
 
                     final String payload = new String(myPacket.get(0).payload, Charset.forName("UTF-8"));
                     final String recipient = new String(myPacket.get(0).dest_eid);
@@ -283,6 +279,8 @@ public class MainActivity extends AppCompatActivity {
                                 txtMsgReceived.setText("Received: " + payload);
                             }
                         });
+
+                        mPacketTable.remove_packet_list(eid);
                     } else {
                         runOnUiThread(new Runnable() {
                             @Override
