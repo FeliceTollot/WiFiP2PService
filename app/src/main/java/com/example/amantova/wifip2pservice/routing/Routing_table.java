@@ -19,9 +19,11 @@ public class Routing_table {
   }
 
   private String my_eid;
+  private long check_period;
 
-  public Routing_table(String eid){
+  public Routing_table(String eid, long check_period){
     my_eid = eid;
+    this.check_period = check_period;
   }
 
   public String get_my_eid(){
@@ -32,6 +34,19 @@ public class Routing_table {
 
   public void register_eid(String eid_arg){
     table.put(eid_arg, new table_item(System.currentTimeMillis()/1000,1));
+  }
+
+  public void clean(){
+    List<String> keys = this.get_eids();
+    Iterator<String> it = keys.iterator();
+    while(it.hasNext()){
+      String item = it.next();
+      table_item entry = table.get(item);
+      long now = System.currentTimeMillis()/1000;
+      if(now - entry.last_seen > check_period){
+        table.remove(item);
+      }
+    }
   }
 
   public List<String> get_eids(){
@@ -88,9 +103,15 @@ public class Routing_table {
       if(now - last_seen > 1000*60*2){
         add_seen(eid);
       }
-
     }
+  }
 
+  public long last_time_seen(String dest_eid){
+    table_item item = table.get(dest_eid);
+    if(item == null){
+      return 0;
+    }
+    return item.last_seen;
   }
 
 }

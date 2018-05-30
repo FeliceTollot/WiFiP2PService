@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 public class Packet_table_item{
+  public String packet_id;
   public String dest_eid;
   public long timestamp;
   public long ttl;
