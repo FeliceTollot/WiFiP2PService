@@ -272,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
                     final String recipient = new String(myPacket.get(0).dest_eid);
 
                     if (eid.equals(mRoutingTable.get_my_eid())) {
+                        Log.d("Packet Table", "Received my packet");
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -279,8 +280,6 @@ public class MainActivity extends AppCompatActivity {
                                 txtMsgReceived.setText("Received: " + payload);
                             }
                         });
-
-                        mPacketTable.remove_packet_list(eid);
                     } else {
                         runOnUiThread(new Runnable() {
                             @Override
