@@ -52,6 +52,32 @@ public class GossipStrategyClient implements IOStrategy {
             List<String> eids = packet_table.get_eids_list();
             List<Exchange_item> exchange_items = new LinkedList<Exchange_item>();
 
+            // exchange services TODO
+            // request services provided
+            out.println("ASK_FOR_SERVICES");
+            String recv = in.readLine();
+            while(recv.equals("END_OF_SERVICES") == false){
+                boolean needed = waiting_table.check_service_need(recv);
+                if(needed){
+                    out.println("YES");
+                    String service_info = in.readLine();
+                    // deal with waiting table
+                    // store in packet table
+                }
+                recv = in.readLine();
+            }
+
+            /*
+            public String dest_eid;
+            public long timestamp;
+            public long ttl;
+            public String service;
+            public byte[] payload;
+             */
+
+            // if some neede request them
+            // store in packege table
+
             out.println("start_exchange_avgs");
 
             Iterator<String> itera =  eids.iterator();

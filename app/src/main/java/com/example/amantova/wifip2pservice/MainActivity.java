@@ -46,6 +46,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -64,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private Waiting_table   mWaitingTable = new Waiting_table();
     private Packet_table    mPacketTable = new Packet_table();
     private Routing_table   mRoutingTable = new Routing_table(Format.gen_eid());
+
+    private List<Service>   provided_services = new LinkedList<>();
 
     private WifiP2pManager.ConnectionInfoListener connectionListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -266,7 +270,10 @@ public class MainActivity extends AppCompatActivity {
         }});
         mServicesClient.put("_gps", new GpsStrategyClient());
 */
-        final GossipStrategyServer gossipStrategy = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable);
+
+        provided_services.add(new Service("_gps", new _gps_handler_server()));
+
+        final GossipStrategyServer gossipStrategy = new GossipStrategyServer(mRoutingTable, mWaitingTable, mPacketTable, provided_services);
         ServiceInfo gossip = new ServiceInfo() {{
             name = "_gossip";
             type = "_presence._tpc";

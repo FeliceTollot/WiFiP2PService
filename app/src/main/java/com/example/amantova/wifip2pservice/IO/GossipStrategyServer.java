@@ -8,23 +8,27 @@ import com.example.amantova.wifip2pservice.routing.Packet_table;
 import com.example.amantova.wifip2pservice.routing.Packet_table_item;
 import com.example.amantova.wifip2pservice.routing.Routing_table;
 import com.example.amantova.wifip2pservice.routing.Waiting_table;
+import com.example.amantova.wifip2pservice.Service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
 
 public class GossipStrategyServer implements IOStrategy {
 
     Routing_table routing_table;
     Waiting_table waiting_table;
     Packet_table  packet_table;
+    List<Service>  services;
 
-    public GossipStrategyServer(Routing_table rout, Waiting_table wait, Packet_table packet){
+    public GossipStrategyServer(Routing_table rout, Waiting_table wait, Packet_table packet, List<Service> services){
         routing_table = rout;
         waiting_table = wait;
         packet_table = packet;
+        this.services = services;
     }
 
     public void run(Socket socket){
@@ -36,6 +40,19 @@ public class GossipStrategyServer implements IOStrategy {
                             new InputStreamReader(socket.getInputStream()));
 
             String input = in.readLine();
+            // exchange services
+            if(input.equals("ASK_FOR_SERVICES")){
+                for(Service item : services){
+                    out.println(item.service_name);
+                    if(in.readLine().equals("YES")){
+                        String load = item.service_handler.compute();
+                        out.println(load);
+                    }
+                }
+                out.println("END_OF_SERVICES");
+                input = in.readLine();
+            }
+
             Log.d("SERVER_RECEIVED: ", input);
             if(input.equals("start_exchange_avgs")){
                 input = in.readLine();
@@ -69,10 +86,6 @@ public class GossipStrategyServer implements IOStrategy {
                 }
             }
             Log.d("SERVER_PACKET: ", input);
-
-            // now simmetrically client and server invert they're roles
-
-
 
         }catch (IOException exc){
             Log.d("IOEXCEPTION",String.valueOf(exc.getCause()));
